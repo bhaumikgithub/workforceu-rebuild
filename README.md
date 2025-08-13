@@ -1,6 +1,7 @@
 # 🧩 **WorkForceU** — A modern, Next.js-powered platform for effortless workforce scheduling, tracking, and performance management.
 
-**Tech Stack**: Next.js • React • Tailwind CSS • Next.js API Routes • MySQL/PostgreSQL/MongoDB • Redux Toolkit/Zustand
+**Tech Stack**:  
+Next.js • React • Tailwind CSS • Next.js API Routes • MySQL/PostgreSQL/MongoDB • Redux Toolkit/Zustand
 
 It runs in a **WAMP (Apache)** environment using **virtual hosts** that proxy requests to the Next.js dev server.
 
@@ -8,11 +9,11 @@ It runs in a **WAMP (Apache)** environment using **virtual hosts** that proxy re
 
 ## 🛠 Requirements
 
-- **Node.js** v18 or higher
-- **WAMP Server** (Windows — Apache)
-- **npm** or **yarn**
-- **Windows OS** (for WAMP setup)
-- **Admin rights** to edit the `hosts` file
+- **Node.js** v18 or higher  
+- **WAMP Server** (Windows — Apache)  
+- **npm** or **yarn**  
+- **Windows OS** (for WAMP setup)  
+- **Admin rights** to edit the `hosts` file  
 
 ---
 
@@ -31,22 +32,53 @@ _or_
 yarn install
 ```
 
-### 2. Run the Next.js server:
+---
 
+## 🔑 2. Git Remote URL Setup
+
+To make sure you can push and pull without errors:
+
+```bash
+git remote set-url origin https://bhaumikgithub@github.com/bhaumikgithub/workforceu-rebuild.git
+```
+
+---
+
+## 📂 3. Git Credentials Setup
+
+If you don’t want to enter your username/password every time:
+
+1. Copy the `.git-credentials` file from **Kinjal**.  
+   This file should contain:
+   ```
+   https://<your-username>:<your-personal-access-token>@github.com
+   ```
+
+2. Configure Git to use it:
+   ```bash
+   git config --global credential.helper store
+   git config --global credential.useHttpPath true
+   ```
+
+3. Verify:
+   ```bash
+   git config --global --list
+   ```
+
+---
+
+## 🖥 4. Run the Next.js server:
 ```bash
 npm run dev
 ```
-
 Default port: `http://localhost:3000`
 
 ---
 
-## 🌐 Setup Subdomains (Virtual Hosts with Proxy)
+## 🌐 5. Setup Subdomains (Virtual Hosts with Proxy)
 
 ### ✅ Step 1: Edit Windows Hosts File
-
 Open `C:\Windows\System32\drivers\etc\hosts` as Administrator and add:
-
 ```
 127.0.0.1 wfu.net
 127.0.0.1 admin.wfu.net
@@ -54,15 +86,11 @@ Open `C:\Windows\System32\drivers\etc\hosts` as Administrator and add:
 ```
 
 ### ✅ Step 2: Apache Virtual Host Configuration
-
 Open `httpd-vhosts.conf` in:
-
 ```
 C:\wamp64\bin\apache\apache2.x.x\conf\extra\httpd-vhosts.conf
 ```
-
-Append the following:
-
+Append:
 ```apache
 <VirtualHost *:80>
     ServerName wfu.net
@@ -84,149 +112,55 @@ Append the following:
 ```
 
 ### ✅ Step 3: Enable Apache Proxy Modules
-
 Open `httpd.conf` and ensure these lines are **uncommented**:
-
 ```apache
 LoadModule proxy_module modules/mod_proxy.so
 LoadModule proxy_http_module modules/mod_proxy_http.so
 ```
 
 ### ✅ Step 4: Restart WAMP Server
-
-After saving all changes, restart Apache using WAMP.
+Restart Apache using WAMP.
 
 ---
 
 ## 💡 How It Works
-
-- Accessing `http://protovate.wfu.net` or `http://admin.wfu.net` will proxy to your local Next.js app.
+- Visiting `http://protovate.wfu.net` or `http://admin.wfu.net` proxies to the local Next.js app.
 - The app extracts the **subdomain** (e.g., `protovate`) and routes to its specific login logic.
-- The default admin login credentials redirect to `/admin-dashboard`.
-- From the dashboard, admin can create users under different subdomains.
 
 ---
 
 ## 🔐 Default Admin Credentials
-
 - **Email:** `admin@wfu.net`
 - **Password:** `admin123`
 
-> You can change these in the mock API or database later.
-
 ---
 
-## 📂 Folder Structure Overview
-
+## 📂 Folder Structure
 ```
 src/
   └── app/
        ├── layout.tsx
-       ├── page.tsx (redirects to subdomain)
+       ├── page.tsx
        └── login/
-             └── page.tsx (login form)
+             └── page.tsx
        └── admin-dashboard/
-             └── page.tsx (admin dashboard)
+             └── page.tsx
   └── lib/
-       └── utils.ts (helper to get subdomain)
+       └── utils.ts
 ```
 
 ---
 
 ## 🧪 Test Your Setup
-
-Try visiting:
-
-- http://admin.wfu.net
-- http://protovate.wfu.net
-
-The system should route to the appropriate login screen based on subdomain.
+- http://admin.wfu.net  
+- http://protovate.wfu.net  
 
 ---
 
 ## 📝 License
-
 MIT — use freely and adapt for your needs.
 
 ---
 
 ## ✉️ Support
-
-For help or customization, feel free to reach out.
-
-## Subdomain Setup Instructions
-
-### For Windows (using WAMP and Virtual Hosts)
-
-1. **Edit `hosts` file**:
-   - Path: `C:\Windows\System32\drivers\etc\hosts`
-   - Add entries:
-     ```
-     127.0.0.1   wfu.net
-     127.0.0.1   admin.wfu.net
-     127.0.0.1   protovate.wfu.net
-     ```
-
-2. **Configure WAMP Virtual Hosts**:
-   - Open WAMP → Apache → `httpd-vhosts.conf` file.
-   - Add:
-     ```apache
-     <VirtualHost *:80>
-         ServerName admin.wfu.net
-         DocumentRoot "C:/path/to/your/project"
-     </VirtualHost>
-
-     <VirtualHost *:80>
-         ServerName protovate.wfu.net
-         DocumentRoot "C:/path/to/your/project"
-     </VirtualHost>
-     ```
-
-3. **Restart WAMP Server**.
-
-4. **Start Next.js app**:
-   ```bash
-   npm run dev
-   ```
-
----
-
-### For Linux (using Apache or Nginx)
-
-1. **Edit `/etc/hosts`**:
-   ```bash
-   sudo nano /etc/hosts
-   ```
-   Add:
-   ```
-   127.0.0.1   wfu.net
-   127.0.0.1   admin.wfu.net
-   127.0.0.1   protovate.wfu.net
-   ```
-
-2. **Create Virtual Hosts** (Apache Example):
-   ```bash
-   sudo nano /etc/apache2/sites-available/admin.wfu.net.conf
-   ```
-   Add:
-   ```apache
-   <VirtualHost *:80>
-       ServerName admin.wfu.net
-       DocumentRoot /path/to/your/project
-   </VirtualHost>
-   ```
-
-   Enable site and restart Apache:
-   ```bash
-   sudo a2ensite admin.wfu.net.conf
-   sudo systemctl restart apache2
-   ```
-
-3. **Start Next.js app**:
-   ```bash
-   npm run dev
-   ```
-
----
-
-You can now access the project from subdomains like `http://wfu.net:3000` or `http://admin.wfu.net:3000` or `http://protovate.wfu.net:3000`.
+For help or customization, reach out to the project maintainer.

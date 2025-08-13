@@ -48,7 +48,7 @@ git remote set-url origin https://bhaumikgithub@github.com/bhaumikgithub/workfor
 
 If you don’t want to enter your username/password every time:
 
-1. Copy the `.git-credentials` file from **Kinjal**.  
+1. Get the `.git-credentials` file from **Kinjal**.  
    This file should contain:
    ```
    https://<your-username>:<your-personal-access-token>@github.com

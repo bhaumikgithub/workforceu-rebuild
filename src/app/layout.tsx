@@ -13,8 +13,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "WorkForecU",
+  title: "Office Automated Hub",
   description: "Rebuild In new way with new tech",
+  icons: {
+    icon: "/favicon.ico",
+  },
 };
 
 export default function RootLayout({

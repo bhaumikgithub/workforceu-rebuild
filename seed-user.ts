@@ -1,5 +1,7 @@
-import { prisma } from './src/lib/prisma'; // relative import for Node
-import bcrypt from 'bcryptjs';
+const { PrismaClient } = require('@prisma/client');
+const bcrypt = require('bcryptjs');
+
+const prisma = new PrismaClient();
 
 async function main() {
   const plainPassword = 'admin@123';
@@ -7,8 +9,8 @@ async function main() {
 
   const user = await prisma.user.create({
     data: {
-      first_name: 'Barton',
-      last_name: 'Dc',
+      first_name: 'Robert',
+      last_name: 'Barton',
       date_of_birth: new Date('1990-01-01'),
       email: 'bartondc@peakclinics.com',
       password: hashedPassword,
@@ -19,12 +21,13 @@ async function main() {
     },
   });
 
-  console.log('User created successfully:', user);
+  console.log('User seeded successfully:', user);
 }
 
 main()
   .catch((e) => {
-    console.error('Error creating user:', e);
+    console.error('Error seeding user:', e);
+    process.exit(1);
   })
   .finally(async () => {
     await prisma.$disconnect();

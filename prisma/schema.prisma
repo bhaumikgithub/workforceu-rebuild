@@ -9,19 +9,20 @@ generator client {
 }
 
 datasource db {
-  provider = "mongodb"
+  provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
+
 model User {
-  id                String   @id @default(auto()) @map("_id") @db.ObjectId
-  first_name        String
-  last_name         String
-  date_of_birth     DateTime
-  email             String   @unique
-  password          String   // bcrypt hashed password
-  original_password String?  // optional, storing plain text is NOT recommended
-  created_at        DateTime @default(now())
-  updated_at        DateTime @updatedAt
-  deleted_at        DateTime?
+  id               Int       @id @default(autoincrement())
+  first_name       String
+  last_name        String
+  date_of_birth    DateTime @db.Date
+  email            String    @unique
+  password         String
+  original_password String
+  created_at       DateTime  @default(now())
+  updated_at       DateTime  @updatedAt
+  deleted_at       DateTime?
 }

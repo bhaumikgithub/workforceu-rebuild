@@ -24,3 +24,22 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+
+/* ✅ Global button style */
+.sign_in {
+  width: 100%;
+  background-color: #00AA66;
+  color: white;
+  font-weight: 600;
+  padding: 0.5rem;
+  border-radius: 9999px;
+  border: 1px solid #00AA66;
+  margin-top: 1rem;
+  transition: background-color 0.2s ease-in-out;
+  cursor: pointer;
+}
+
+.sign_in:hover {
+  background-color: #00995c;
+}

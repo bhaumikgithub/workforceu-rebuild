@@ -42,18 +42,12 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4">
-      <Image
-        src="/oahub_logo.png"
-        alt="Office Automated Hub Logo"
-        width={500}
-        height={150}
-        priority
-        className="mb-8"
+      <Image src="/oahub_logo.png" alt="Office Automated Hub Logo" width={500} height={150} priority className="mb-8"
       />
 
       <form onSubmit={handleSubmit} className="bg-white w-full max-w-md">
         <div className="flex border border-gray-300 rounded overflow-hidden">
-          <input type="text" placeholder="Client ID" value={subdomain || ''} onChange={(e) => setSubdomain(e.target.value)} className="flex-grow px-4 py-2 outline-none"/>
+          <input type="text" placeholder="Client ID" value={subdomain || ''} onChange={(e) => setSubdomain(e.target.value)} className="flex-grow px-4 py-2 outline-none" name='client_id'/>
           <span className="px-2 flex items-center border-l border-gray-300 text-sm text-gray-700">
             .{rootDomain}
           </span>

@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+/* Designer's custom global styles */
+@import "./custom.css";
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -20,11 +22,10 @@
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  max-width: 100vw;
+  overflow-x: hidden;
+  font-family: "Inter", sans-serif !important;
 }
-
 
 /* ✅ Global button style */
 .sign_in {

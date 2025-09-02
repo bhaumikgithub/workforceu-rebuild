@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,16 +7,213 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ---------------- ENUMS ----------------
+enum Gender {
+  male
+  female
+}
 
-model User {
-  id               Int       @id @default(autoincrement())
-  first_name       String
-  last_name        String
-  date_of_birth    DateTime @db.Date
-  email            String    @unique
-  password         String
-  original_password String
-  created_at       DateTime  @default(now())
-  updated_at       DateTime  @updatedAt
-  deleted_at       DateTime?
+enum PayType {
+  hourly
+  flat_rate
+}
+
+enum UserStatus {
+  active
+  inactive
+  terminate
+  ban
+}
+
+enum commonStatus{
+  active
+  inactive
+}
+
+enum UserTypes{
+  super_admin
+  admin
+  po_user
+  so_user
+}
+
+enum RemainderNotifications{
+  yes
+  no
+}
+
+// ---------------- MODELS ----------------
+model users {
+  id        Int    @id @default(autoincrement())
+
+  subdomain_id    Int?
+  subdomain       subdomains? @relation(fields: [subdomain_id], references: [id], onUpdate: Cascade, onDelete: Cascade)
+
+  // Personal info
+  first_name      String?   @db.VarChar(191)
+  last_name       String?   @db.VarChar(191)
+  user_name       String?   @db.VarChar(191)
+  email           String?   @db.VarChar(191)
+  password        String?   @db.Text
+  original_password String? @db.Text 
+  mobile          String?   @db.VarChar(50) 
+  phone_number    String?   @db.VarChar(50) 
+  address         String?   @db.Text 
+  address_2       String?   @db.Text 
+  city            String?   @db.VarChar(75) 
+  state_id        Int?
+  country_id      Int?
+  zip_code        String?   @db.VarChar(20)  
+  time_zone_id    Int?
+  gender          String?   
+  birth_date      DateTime? 
+  fax             String?   @db.VarChar(50)
+  email_verified_at DateTime? @db.Timestamp(0) 
+  profile_headshot String?
+  company_logo     String?
+
+  state           states?    @relation(fields: [state_id], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  country         countries? @relation(fields: [country_id], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  timezone        timezones? @relation(fields: [time_zone_id], references: [id], onUpdate: Cascade, onDelete: Cascade)
+
+  // User type: admin, po, so — optional for migration
+  user_type            UserTypes?
+
+  // Self-relation: owner for SO users
+  owner_id        Int?      
+  owner           users?    @relation("OwnerSO", fields: [owner_id], references: [id])
+  so_users        users[]   @relation("OwnerSO")
+
+  // Employee info
+  department_id   Int?      
+  location_id     Int?      
+  position        String?   @db.VarChar(75) 
+  pay_type        PayType?
+  review_date     DateTime? 
+  reimbursement   String?   @db.VarChar(75) 
+  date_employed   DateTime? 
+  hire_date       DateTime? 
+  salary          String?   @db.VarChar(75) 
+  
+  department      departments? @relation(fields: [department_id], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  location        locations?   @relation(fields: [location_id], references: [id], onUpdate: Cascade, onDelete: Cascade)
+
+  status          UserStatus?  @default(active) // replaced Enum with String
+  remember_token  String?   @db.VarChar(100)
+
+  //Account setting details
+  account_type  Int?
+  reminder_messenger_emails RemainderNotifications?
+  reminder_task_notification_emails RemainderNotifications?
+  last_login  DateTime?
+
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+  deleted_at      DateTime?
+
+  @@index([subdomain_id])
+  @@index([state_id])
+  @@index([country_id])
+  @@index([time_zone_id])
+  @@index([department_id])
+  @@index([location_id])
+}
+
+
+model subdomains {
+  id            Int       @id @default(autoincrement())  // <-- add autoincrement
+
+  name          String?   @db.VarChar(255)
+  domain        String    @db.VarChar(191)
+  company_type_id Int?
+  theme_config    String?   @db.VarChar(255)
+  status          commonStatus?
+  regular_hours Int?
+  week_start_day Int?
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+  deleted_at      DateTime?
+
+  // Relations
+  users        users[]
+  departments  departments[]
+  locations    locations[]
+  company_type company_types? @relation(fields: [company_type_id], references: [id])
+}
+
+model departments {
+  id              Int     @id @default(autoincrement())
+  subdomain_id    Int
+  department_name String  @db.VarChar(255)
+  status       commonStatus @default(active)
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+  deleted_at      DateTime?
+
+
+  subdomain subdomains @relation(fields: [subdomain_id], references: [id])
+  users     users[]
+}
+
+model locations {
+  id            Int     @id @default(autoincrement())
+  subdomain_id  Int
+  location_name String  @db.VarChar(255)
+  status       commonStatus @default(active)
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+  deleted_at      DateTime?
+
+
+  subdomain subdomains @relation(fields: [subdomain_id], references: [id])
+  users     users[]
+}
+
+model countries {
+  id           Int       @id @default(autoincrement())
+  name         String    @db.VarChar(255)
+  status       commonStatus @default(active)
+  created_at   DateTime? @db.DateTime(0)
+  updated_at   DateTime? @db.DateTime(0)
+  deleted_at   DateTime? @db.DateTime(0)
+
+  states   states[]
+  users    users[]
+}
+
+model states {
+  id         Int      @id @default(autoincrement()) @db.UnsignedInt
+  country_id Int      @db.UnsignedInt
+  name       String
+  status     commonStatus @default(active)
+  created_at DateTime? @db.Timestamp(0)
+  updated_at DateTime? @db.Timestamp(0)
+  deleted_at DateTime? @db.Timestamp(0)
+
+  country countries @relation(fields: [country_id], references: [id])
+  users   users[]
+}
+
+model timezones {
+  id         Int      @id @default(autoincrement()) @db.UnsignedInt
+  name       String?
+  utc        String?
+  status     commonStatus @default(active)
+  created_at DateTime? @db.Timestamp(0)
+  updated_at DateTime? @db.Timestamp(0)
+  deleted_at DateTime? @db.Timestamp(0)
+  
+  users   users[]
+}
+
+model company_types {
+  id          Int     @id @default(autoincrement())
+  name        String  @db.Text
+  description String  @db.LongText
+  status      commonStatus @default(active)
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+  deleted_at      DateTime?
+
+  subdomains subdomains[]
 }

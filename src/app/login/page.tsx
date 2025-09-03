@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import axios from "axios"; // ✅ Import axios
 import LoginForm from "@/components/ui/Auth/LoginPage";
 
 export default function LoginPage() {
@@ -10,20 +11,21 @@ export default function LoginPage() {
     setError("");
 
     try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
+      const res = await axios.post("/api/auth/login", data);
 
-      if (!res.ok) {
+      if (res.status !== 200) {
         throw new Error("Invalid credentials");
       }
 
       // 👉 Redirect or handle session
       window.location.href = "/dashboard";
     } catch (err: any) {
-      setError(err.message);
+      // Axios gives a structured error object
+      if (err.response) {
+        setError(err.response.data?.message || "Invalid credentials");
+      } else {
+        setError(err.message);
+      }
     }
   };
 

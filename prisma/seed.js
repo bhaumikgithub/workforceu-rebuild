@@ -127,7 +127,7 @@ async function main() {
 	// 		first_name: 'Robert',
 	// 		last_name: 'Barton',
 	// 		email: 'bartondc@peakclinics.com',
-	// 		password: await bcrypt.hash('595e5014609f159c13074bd3e59f8958', 10),
+	// 		password: "595e5014609f159c13074bd3e59f8958",
 	// 		user_type: 'super_admin',
 	// 	},
 	// });
@@ -154,11 +154,7 @@ async function main() {
 	// 	: 'inactive';
 
 	// 	// Normalize password
-	// 	let rawPassword = member.password || "admin123";
-	// 	if (typeof rawPassword !== "string") rawPassword = String(rawPassword);
-	// 	const hashedPassword = await bcrypt.hash(rawPassword, 10);
-
-	// 	console.log(`👤 Seeding user: ${member.member_id} | Raw password: ${rawPassword}`);
+	// 	console.log(`👤 Seeding user: ${member.member_id}`);
 
 	// 	// Insert user
 	// 	await prisma.users.create({
@@ -168,7 +164,7 @@ async function main() {
 	// 			last_name: member.last_name,
 	// 			user_name: member.user_name,
 	// 			email: member.email,
-	// 			password: hashedPassword,
+	// 			password: member.password,
 	// 			mobile: member.mobile || null,
 	// 			phone_number: member.phone || null,
 	// 			address: member.address || null,
@@ -213,37 +209,28 @@ async function main() {
 	// 	console.log(`🔗 Updated owner_id for SO user: ${soUser.member_id} -> Owner: ${soUser.owner_id}`);
 	// }
 
-	// // 3. Migrate admin_users
-	// const [adminUsers] = await externalDb.execute('SELECT * FROM admin_users WHERE user_id != 9');
-	// for (const admin of adminUsers) {
-	// 	// Always use a safe fallback password
-	// 	let rawPassword = admin.password;
+	// 3. Migrate admin_users
+	const [adminUsers] = await externalDb.execute('SELECT * FROM admin_users WHERE user_id != 9');
+	for (const admin of adminUsers) {
+		// Always use a safe fallback password
+		let rawPassword = admin.password;
 
-	// 	// Debug log to see what's coming in
-	// 	console.log("👤 Seeding user:", admin.user_id, "| Raw password:", rawPassword, "| Type:", typeof rawPassword);
+		// Debug log to see what's coming in
+		console.log("👤 Seeding user:", admin.user_id, "| Raw password:", rawPassword, "| Type:", typeof rawPassword);
 
-	// 	// Normalize password
-	// 	if (rawPassword === undefined || rawPassword === null || rawPassword === "") {
-	// 		rawPassword = "admin123"; // fallback
-	// 	} else if (typeof rawPassword !== "string") {
-	// 		rawPassword = String(rawPassword); // force convert numbers/objects
-	// 	}
-
-	// 	const hashedPassword = await bcrypt.hash(rawPassword, 10);
-
-	// 	await prisma.users.create({
-	// 		data: {
-	// 			subdomain_id : 1,
-	// 			first_name: admin.first_name,
-	// 			last_name: admin.last_name,
-	// 			email: admin.email,
-	// 			password: hashedPassword,
-	// 			user_type: 'admin',
-	// 			status: admin.active === 1 ? 'active' : 'inactive',
-	// 			owner_id : admin.user_id
-	// 		},
-	// 	});
-  	// }
+		await prisma.users.create({
+			data: {
+				subdomain_id : 1,
+				first_name: admin.first_name,
+				last_name: admin.last_name,
+				email: admin.email,
+				password: rawPassword,
+				user_type: 'admin',
+				status: admin.active === 1 ? 'active' : 'inactive',
+				owner_id : admin.user_id
+			},
+		});
+  	}
 
 	// --- Seed Departments ---
 	// const [departments] = await externalDb.execute(`SELECT * FROM departments`);

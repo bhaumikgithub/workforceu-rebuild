@@ -1,38 +1,45 @@
 "use client";
 
 import { useState } from "react";
-import axios from "axios"; // ✅ Import axios
+import axios from "axios";
+import { useRouter } from "next/navigation";
 import LoginForm from "@/components/ui/Auth/LoginPage";
 
+interface LoginResponse {
+  status: boolean;
+  message: string;
+  token?: string;
+  user?: any;
+}
+
 export default function LoginPage() {
-  const [error, setError] = useState("");
+    const [error, setError] = useState("");
+    const router = useRouter();
 
-  const handleLogin = async (data: { email: string; password: string }) => {
-    setError("");
+    const handleLogin = async (data: { email: string; password: string }) => {
+        setError("");
 
-    try {
-      const res = await axios.post("/api/auth/login", data);
+        try {
+        const res = await axios.post<LoginResponse>("/api/auth/login", data);
 
-      if (res.status !== 200) {
-        throw new Error("Invalid credentials");
-      }
+        if (!res.data.status) {
+            throw new Error(res.data.message || "Invalid credentials");
+        }
 
-      // 👉 Redirect or handle session
-      window.location.href = "/dashboard";
-    } catch (err: any) {
-      // Axios gives a structured error object
-      if (err.response) {
-        setError(err.response.data?.message || "Invalid credentials");
-      } else {
-        setError(err.message);
-      }
-    }
-  };
+        if (res.data.token) {
+            localStorage.setItem("token", res.data.token);
+        }
 
-  return (
-    <div>
-      <LoginForm onSubmit={handleLogin} />
-      {error && <p className="text-center text-red-500 mt-2">{error}</p>}
-    </div>
-  );
+        router.push("/dashboard");
+        } catch (err: any) {
+        setError(err?.response?.data?.message || err?.message || "Login failed");
+        }
+    };
+
+    return (
+        <div>
+        <LoginForm onSubmit={handleLogin} />
+        {error && <p className="text-center text-red-500 mt-2">{error}</p>}
+        </div>
+    );
 }

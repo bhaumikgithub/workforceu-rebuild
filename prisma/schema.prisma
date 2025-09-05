@@ -47,7 +47,7 @@ model users {
   id        Int    @id @default(autoincrement())
 
   subdomain_id    Int?
-  subdomain       subdomains? @relation(fields: [subdomain_id], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  subdomain subdomains? @relation(fields: [subdomain_id], references: [id], onDelete: SetNull, onUpdate: Cascade)
 
   // Personal info
   first_name      String?   @db.VarChar(191)
@@ -61,10 +61,11 @@ model users {
   address         String?   @db.Text 
   address_2       String?   @db.Text 
   city            String?   @db.VarChar(75) 
-  state_id        Int?
+  state_id        Int?      @db.UnsignedInt
   country_id      Int?
+
   zip_code        String?   @db.VarChar(20)  
-  time_zone_id    Int?
+  time_zone_id    Int?      @db.UnsignedInt
   gender          String?   
   birth_date      DateTime? 
   fax             String?   @db.VarChar(50)

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "../styles/globals.css";
-import { ToastProvider } from "@/context/ToastContext";
+import { ToastProvider } from "@/context/ToastContext"; // ✅ import your wrapper
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,7 +31,8 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <ToastProvider>{children}</ToastProvider>
+        {children}
+        <ToastProvider /> {/* always global */}
       </body>
     </html>
   );

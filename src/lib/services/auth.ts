@@ -13,24 +13,30 @@ function sanitizeUser(u: any) {
 
 export async function login(email: string, password: string, domain: string) {
   // 1️⃣ Find tenant by domain
-  const tenant = await prisma.subdomains.findFirst({
-    where: { domain },
-  });
-  if (!tenant) throw new Error("Credentials do not match this domain");
+  const tenant = await prisma.subdomains.findFirst({ where: { domain } });
+  if (!tenant) throw new Error(`Credentials do not match this domain "${domain}"`);
 
-  // 2️⃣ Find all users under this tenant with the email
+  // 2️⃣ Check if email exists globally
+  const emailExists = await prisma.users.findFirst({ where: { email } });
+  if (!emailExists) throw new Error("Email does not exist in the system");
+
+  // 3️⃣ Check if email exists under this tenant
   const candidates = await prisma.users.findMany({
     where: { email, subdomain_id: tenant.id },
   });
-  if (!candidates.length) throw new Error("Credentials do not match this domain");
 
+  if (!candidates.length) {
+    // Email exists but not under this domain
+    throw new Error(`Email "${email}" does not exist under domain "${domain}"`);
+  }
+
+  // 4️⃣ Attempt password verification
   let matchedUser: any = null;
 
-  // 3️⃣ Try to authenticate each candidate
   for (const user of candidates) {
     let ok = false;
 
-    // Try bcrypt if present
+    // bcrypt verification
     if (user.password) {
       try {
         ok = await compareBcrypt(password, user.password);
@@ -39,7 +45,7 @@ export async function login(email: string, password: string, domain: string) {
       }
     }
 
-    // If bcrypt failed, try legacy MD5
+    // legacy MD5 verification
     if (!ok && user.password) {
       const md5 = md5Hex(password);
       if (md5 === user.password) {
@@ -51,8 +57,8 @@ export async function login(email: string, password: string, domain: string) {
           await prisma.users.update({
             where: { id: user.id },
             data: {
-              original_password: password, // store plain password ONCE
-              password: newBcrypt,         // upgrade to bcrypt
+              original_password: password,
+              password: newBcrypt,
             },
           });
         }
@@ -65,9 +71,12 @@ export async function login(email: string, password: string, domain: string) {
     }
   }
 
-  if (!matchedUser) throw new Error("Credentials do not match this domain");
+  if (!matchedUser) {
+    // Email + domain found but password incorrect
+    throw new Error("Password is incorrect");
+  }
 
-  // 4️⃣ Issue JWT
+  // 5️⃣ Issue JWT
   const token = jwt.sign(
     { id: matchedUser.id, email: matchedUser.email, subdomain_id: tenant.id },
     process.env.JWT_SECRET || "dev_secret",

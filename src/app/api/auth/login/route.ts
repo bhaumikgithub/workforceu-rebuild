@@ -5,32 +5,25 @@ export async function POST(req: Request) {
   try {
     const { email, password , domain} = await req.json();
 
-    if (!email) {
-      return NextResponse.json(
-        { status: false, message: "Email is required" },
-        { status: 400 }
-      );
-    }
-
-    if (!password) {
-      return NextResponse.json(
-        { status: false, message: "Password is required" },
-        { status: 400 }
-      );
+    if (!email || !password || !domain) {
+        return NextResponse.json(
+            { success: false, message: "Missing required fields" },
+            { status: 400 }
+        );
     }
 
     const { user, token } = await login(email, password , domain);
 
     return NextResponse.json({
-      status: true,
-      message: "Login successful",
-      user,
-      token,
+        status: true,
+        message: "Login successful",
+        user,
+        token,
     });
-  } catch (err: any) {
-    return NextResponse.json(
-      { status: false, message: err?.message || "Login failed" },
-      { status: 400 }
-    );
-  }
+    } catch (err: any) {
+        return NextResponse.json(
+        { status: false, message: err?.message || "Login failed" },
+        { status: 400 }
+        );
+    }
 }

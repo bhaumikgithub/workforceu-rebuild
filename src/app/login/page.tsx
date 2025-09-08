@@ -39,7 +39,7 @@ export default function LoginPage() {
     return (
         <div>
         <LoginForm onSubmit={handleLogin} />
-        {error && <p className="text-center text-red-500 mt-2">{error}</p>}
+            {error && <p className="text-center text-red-500 mt-2">{error}</p>}
         </div>
     );
 }

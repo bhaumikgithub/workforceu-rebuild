@@ -14,16 +14,6 @@ const API = axios.create({
   },
 });
 
-// Login API
-// export const loginUser = async (email: string, password: string) => {
-//   try {
-//     const res = await API.post("/login", { email, password });
-//     return res.data;
-//   } catch (err: any) {
-//     throw err.response?.data || { message: err.message };
-//   }
-// };
-
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
     return res.status(405).json({ message: "Method not allowed" });

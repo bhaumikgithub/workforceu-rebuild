@@ -42,8 +42,7 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4">
-      <Image src="/oahub_logo.png" alt="Office Automated Hub Logo" width={500} height={150} priority className="mb-8"
-      />
+      <Image src="/oahub_logo.png" alt="Office Automated Hub Logo" width={500} height={150} priority className="mb-8"/>
 
       <form onSubmit={handleSubmit} className="bg-white w-full max-w-md">
         <div className="flex border border-gray-300 rounded overflow-hidden">

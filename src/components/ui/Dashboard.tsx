@@ -13,7 +13,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
         <h1 className="text-lg font-semibold">Dashboard</h1>
         <button
           onClick={onLogout}
-          className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded text-sm"
+          className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded text-sm cursor-pointer"
         >
           Logout
         </button>

@@ -4,42 +4,49 @@ import { useState } from "react";
 import axios from "axios";
 import { useRouter } from "next/navigation";
 import LoginForm from "@/components/ui/Auth/LoginPage";
+import { useToast } from "@/context/ToastContext";
 
 interface LoginResponse {
-  status: boolean;
-  message: string;
-  token?: string;
-  user?: any;
+    status: boolean;
+    message: string;
+    token?: string;
+    user?: any;
 }
 
 export default function LoginPage() {
+    const [loading, setLoading] = useState(true);
+     const { showToast } = useToast();
     const [error, setError] = useState("");
     const router = useRouter();
 
     const handleLogin = async (data: { email: string; password: string }) => {
-        setError("");
-
+        setLoading(true);
         try {
-        const res = await axios.post<LoginResponse>("/api/auth/login", data);
+            const domain = window.location.hostname.split(".")[0]; // simple subdomain
 
-        if (!res.data.status) {
-            throw new Error(res.data.message || "Invalid credentials");
-        }
+            const res = await axios.post<LoginResponse>("/api/auth/login", {
+                ...data,
+                domain,
+            });
 
-        if (res.data.token) {
-            localStorage.setItem("token", res.data.token);
-        }
+            if (!res.data.status) throw new Error(res.data.message || "Invalid credentials");
 
-        router.push("/dashboard");
+            // Save token
+            if (res.data.token) localStorage.setItem("token", res.data.token);
+
+            showToast("Login successful!", "success");
+
+            router.push("/dashboard");
         } catch (err: any) {
-        setError(err?.response?.data?.message || err?.message || "Login failed");
+            showToast(err?.response?.data?.message || err?.message || "Login failed", "error");
+        } finally {
+            setLoading(false);
         }
-    };
+  };
 
     return (
         <div>
-        <LoginForm onSubmit={handleLogin} />
-            {error && <p className="text-center text-red-500 mt-2">{error}</p>}
+        <LoginForm onSubmit={handleLogin} disabled={loading} />
         </div>
     );
 }

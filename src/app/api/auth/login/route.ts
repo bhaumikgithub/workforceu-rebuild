@@ -3,7 +3,7 @@ import { login } from "@/lib/services/auth";
 
 export async function POST(req: Request) {
   try {
-    const { email, password } = await req.json();
+    const { email, password , domain} = await req.json();
 
     if (!email) {
       return NextResponse.json(
@@ -19,7 +19,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const { user, token } = await login(email, password);
+    const { user, token } = await login(email, password , domain);
 
     return NextResponse.json({
       status: true,

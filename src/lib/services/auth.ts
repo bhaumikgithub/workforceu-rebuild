@@ -11,14 +11,22 @@ function sanitizeUser(u: any) {
   return rest;
 }
 
-export async function login(email: string, password: string) {
-  // 1) Find all users with same email (duplicates allowed)
-  const candidates = await prisma.users.findMany({ where: { email } });
-  if (!candidates.length) throw new Error("Invalid Email");
+export async function login(email: string, password: string, domain: string) {
+  // 1️⃣ Find tenant by domain
+  const tenant = await prisma.subdomains.findFirst({
+    where: { domain },
+  });
+  if (!tenant) throw new Error("Credentials do not match this domain");
+
+  // 2️⃣ Find all users under this tenant with the email
+  const candidates = await prisma.users.findMany({
+    where: { email, subdomain_id: tenant.id },
+  });
+  if (!candidates.length) throw new Error("Credentials do not match this domain");
 
   let matchedUser: any = null;
 
-  // 2) Try to authenticate each
+  // 3️⃣ Try to authenticate each candidate
   for (const user of candidates) {
     let ok = false;
 
@@ -31,19 +39,19 @@ export async function login(email: string, password: string) {
       }
     }
 
-    // If bcrypt failed, try legacy MD5 (DB 'password' may contain an md5)
+    // If bcrypt failed, try legacy MD5
     if (!ok && user.password) {
       const md5 = md5Hex(password);
       if (md5 === user.password) {
         ok = true;
 
-        // Upgrade if original_password is empty/null
+        // Upgrade password to bcrypt if original_password empty
         if (!user.original_password || user.original_password.trim() === "") {
           const newBcrypt = await hashPassword(password);
           await prisma.users.update({
             where: { id: user.id },
             data: {
-              original_password: password, // ⚠️ stores plain password ONCE (your requirement)
+              original_password: password, // store plain password ONCE
               password: newBcrypt,         // upgrade to bcrypt
             },
           });
@@ -51,18 +59,17 @@ export async function login(email: string, password: string) {
       }
     }
 
-    // If user.password is null: this user simply can't log in with password (skip)
     if (ok) {
       matchedUser = user;
       break;
     }
   }
 
-  if (!matchedUser) throw new Error("Invalid Credentials");
+  if (!matchedUser) throw new Error("Credentials do not match this domain");
 
-  // 3) Issue JWT
+  // 4️⃣ Issue JWT
   const token = jwt.sign(
-    { id: matchedUser.id, email: matchedUser.email },
+    { id: matchedUser.id, email: matchedUser.email, subdomain_id: tenant.id },
     process.env.JWT_SECRET || "dev_secret",
     { expiresIn: "1d" }
   );

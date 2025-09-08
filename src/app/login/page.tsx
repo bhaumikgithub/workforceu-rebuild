@@ -27,7 +27,7 @@ export default function LoginPage() {
     const toastId = toast.loading("Verifying credentials...");
 
     try {
-      const res = await axios.post<LoginResponse>("/api/auth/login", {
+      const res = await axios.post<LoginResponse>("/api/auth", {
         ...data,
         domain,
       });

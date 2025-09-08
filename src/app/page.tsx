@@ -10,35 +10,54 @@ export default function HomePage() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const host = window.location.hostname;
-      console.log(host);
-      // Decide root domain based on hostname
-      if (host.includes('localhost') || host.includes('127.0.0.1') || host.includes('wfu.net')) {
-        setRootDomain('wfu.net');
-      } else if (host.includes('dev')) {
-        setRootDomain('workforce.net');
-      } else {
-        setRootDomain('officeautomatedhub.com');
-      }
+		const host = window.location.hostname;
+		console.log(host);
+		// Decide root domain based on hostname
+		if (host.includes('localhost') || host.includes('127.0.0.1') || host.includes('wfu.net')) {
+			setRootDomain('wfu.net');
+		} else if (host.includes('dev')) {
+			setRootDomain('workforce.net');
+		} else {
+			setRootDomain('officeautomatedhub.com');
+		}
     }
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
 
-    const subdomainRegex = /^[a-zA-Z0-9-]{2,63}$/;
+  const subdomainRegex = /^[a-zA-Z0-9-]{2,63}$/;
 
-    if (!subdomain) {
-      setError('Client ID is required.');
-      return;
-    } else if (!subdomainRegex.test(subdomain)) {
-      setError('Invalid Client ID. Only letters, numbers, and hyphens allowed.');
+  if (!subdomain) {
+    setError('Client ID is required.');
+    return;
+  } else if (!subdomainRegex.test(subdomain)) {
+    setError('Invalid Client ID. Only letters, numbers, and hyphens allowed.');
+    return;
+  }
+
+  // Call API to check subdomain
+  try {
+    const res = await fetch('/api/subdomain', {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ subdomain })
+    });
+
+    const data = await res.json();
+
+    if (!data.exists) {
+      setError('Subdomain does not exist.');
       return;
     }
 
     setError('');
     window.location.href = `http://${subdomain}.${rootDomain}:3000/login`;
-  };
+
+  } catch (err) {
+    	setError('Unable to verify subdomain. Please try again.');
+  }
+};
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4">

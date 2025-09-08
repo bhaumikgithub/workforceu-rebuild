@@ -47,7 +47,7 @@ model users {
   id        Int    @id @default(autoincrement())
 
   subdomain_id    Int?
-  subdomain       subdomains? @relation(fields: [subdomain_id], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  subdomain subdomains? @relation(fields: [subdomain_id], references: [id], onDelete: SetNull, onUpdate: Cascade)
 
   // Personal info
   first_name      String?   @db.VarChar(191)
@@ -61,10 +61,11 @@ model users {
   address         String?   @db.Text 
   address_2       String?   @db.Text 
   city            String?   @db.VarChar(75) 
-  state_id        Int?
+  state_id        Int?      @db.UnsignedInt
   country_id      Int?
+
   zip_code        String?   @db.VarChar(20)  
-  time_zone_id    Int?
+  time_zone_id    Int?      @db.UnsignedInt
   gender          String?   
   birth_date      DateTime? 
   fax             String?   @db.VarChar(50)
@@ -110,6 +111,9 @@ model users {
   created_at      DateTime  @default(now())
   updated_at      DateTime  @updatedAt
   deleted_at      DateTime?
+
+  subscriptions  Subscription[]
+  paymentMethods PaymentMethod[]
 
   @@index([subdomain_id])
   @@index([state_id])
@@ -216,4 +220,48 @@ model company_types {
   deleted_at      DateTime?
 
   subdomains subdomains[]
+}
+
+
+model Subscription {
+  id                          Int       @id @default(autoincrement())
+  plan_id                     String?
+  user_id                     Int?      @map("user_id")
+
+  user      users? @relation(fields: [user_id], references: [id], onUpdate: Cascade, onDelete: Cascade)
+
+  stripe_id      String?      @map("subscription_id")   // Stripe subscription ID
+  subscription_start_date     DateTime? @map("subscription_start_date")
+  subscription_end_date       DateTime? @map("subscription_end_date")
+  employee_limit              String?   @map("employee_limit")
+  stripe_customer_id            String?   @map("customer_id")       // Stripe customer ID
+  coupan_id                  String?   @map("coupan_id")         // Stripe coupon ID (nullable)
+  interval                  String?   @map("interval")          // month, year, etc.
+  plan_name                  String?   @map("plan_name")
+  stripe_status              Boolean   @default(true) @map("is_active")
+  invoice_id                 String?   @map("invoice_id")        // Stripe invoice ID
+  amount                      Float?     @default(0)
+  last_payment_attempted_date  DateTime? @map("last_payment_attempted_date")
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+  deleted_at      DateTime?
+  
+  @@map("subscriptions") // keeps table name as is
+}
+
+model PaymentMethod {
+  id                  Int       @id @default(autoincrement())
+  user_id              Int
+  stripe_payment_method_id String   @map("stripe_payment_method_id")
+  card_brand           String?   @map("card_brand")
+  last_4           String?   @map("card_last4")
+  exp_month        Int?      @map("card_exp_month")
+  exp_year         Int?      @map("card_exp_year")
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+  deleted_at      DateTime?
+
+  user      users? @relation(fields: [user_id], references: [id], onUpdate: Cascade, onDelete: Cascade)
+
+  @@map("payment_methods")
 }

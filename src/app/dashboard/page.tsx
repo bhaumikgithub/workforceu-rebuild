@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { jwtDecode } from "jwt-decode";
-import Dashboard from "@/components/ui/Dashboard";
+import Dashboard from "@/components/ui/Admin/Dashboard";
 
 interface JWTPayload {
   id: string;

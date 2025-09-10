@@ -41,7 +41,7 @@ export default function LoginPage() {
 
       login(res.data.token, res.data.user);
       toast.success("Login successful!", { id: toastId });
-      router.push("/dashboard");
+      router.push("/admin/dashboard");
     } catch (err: any) {
       toast.error(
         err?.response?.data?.message || err?.message || "Login failed",

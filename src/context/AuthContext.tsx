@@ -1,24 +1,13 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
-import { useRouter } from "next/navigation";
-import { jwtDecode } from "jwt-decode";
+import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
 
-interface JWTPayload {
-  id: number;
-  email: string;
-  exp: number;
-}
-
-interface User {
-  id: number;
-  email: string;
-}
+type User = any;
 
 interface AuthContextType {
   user: User | null;
   token: string | null;
-  login: (token: string, user: User) => void;
+  login: (user: User, token: string) => void;
   logout: () => void;
   loading: boolean;
 }
@@ -29,43 +18,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const router = useRouter();
 
   useEffect(() => {
-    const storedToken = localStorage.getItem("token");
-    const storedUser = localStorage.getItem("user");
-
-    if (storedToken && storedUser) {
-      try {
-        const decoded = jwtDecode<JWTPayload>(storedToken);
-        if (decoded.exp * 1000 > Date.now()) {
-          setToken(storedToken);
-          setUser(JSON.parse(storedUser));
-        } else {
-          localStorage.removeItem("token");
-          localStorage.removeItem("user");
-        }
-      } catch {
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
-      }
+    try {
+      const sUser = localStorage.getItem("user");
+      const sToken = localStorage.getItem("token");
+      if (sUser) setUser(JSON.parse(sUser));
+      if (sToken) setToken(sToken);
+    } catch (e) {
+      console.error("Auth hydrate failed", e);
+      localStorage.removeItem("user");
+      localStorage.removeItem("token");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, []);
 
-  const login = (newToken: string, newUser: User) => {
-    localStorage.setItem("token", newToken);
-    localStorage.setItem("user", JSON.stringify(newUser));
-    setToken(newToken);
+  const login = (newUser: User, newToken: string) => {
     setUser(newUser);
+    setToken(newToken);
+    localStorage.setItem("user", JSON.stringify(newUser));
+    localStorage.setItem("token", newToken);
   };
 
   const logout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    setToken(null);
     setUser(null);
-    router.push("/login");
+    setToken(null);
+    localStorage.removeItem("user");
+    localStorage.removeItem("token");
   };
 
   return (

@@ -32,7 +32,7 @@ export default function PublicUsersPage() {
   const [search, setSearch] = useState('');
 
   const columns: ColDef<User>[] = [
-    { headerName: 'First Name', field: 'firstName', sortable: true, filter: true },
+    { headerName: 'First Name', field: 'firstName', sortable: true, filter: true, sort: 'asc' }, // default sort
     { headerName: 'Last Name', field: 'lastName', sortable: true, filter: true },
     { headerName: 'Company Type', field: 'companyType', sortable: true, filter: true },
     { headerName: 'Business Type', field: 'businessType', sortable: true, filter: true },
@@ -72,9 +72,6 @@ export default function PublicUsersPage() {
 
     // set datasource initially
     (params.api as any).setGridOption('datasource', datasource());
-
-    // default sort
-    (params.api as any).setSortModel([{ colId: 'firstName', sort: 'asc' }]);
   };
 
   // when search changes, re-attach datasource and reset to page 1
@@ -92,7 +89,7 @@ export default function PublicUsersPage() {
       <div className="mb-4 flex gap-2">
         <input
           type="text"
-          placeholder="Search by name or email..."
+          placeholder="Search"
           className="border px-2 py-1 rounded flex-1"
           value={search}
           onChange={(e) => setSearch(e.target.value)}

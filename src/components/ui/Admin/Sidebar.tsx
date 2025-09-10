@@ -1,15 +1,15 @@
 "use client";
+import { useRouter } from "next/navigation";
+import { Users, Home, FileText, Settings } from "lucide-react";
 
-import { Home, Users, FileText, Settings } from "lucide-react";
+export default function Sidebar() {
+  const router = useRouter();
 
-interface SidebarProps {
-  onNavigate?: (route: string) => void;
-}
-
-export default function Sidebar({ onNavigate }: SidebarProps) {
   const menuItems = [
-    { name: "Dashboard", icon: <Home size={18} />, route: "/dashboard" },
-    { name: "Users", icon: <Users size={18} />, route: "/public_users" },
+    { name: "Home", icon: <Home size={18} />, route: "/dashboard" },
+    { name: "Users", icon: <Users size={18} />, route: "/admin/publicUsers" },
+    // { name: "Reports", icon: <FileText size={18} />, route: "/reports" },
+    // { name: "Settings", icon: <Settings size={18} />, route: "/settings" },
   ];
 
   return (
@@ -19,7 +19,7 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
           {menuItems.map((item) => (
             <li key={item.name}>
               <button
-                onClick={() => onNavigate?.(item.route)}
+                onClick={() => router.push(item.route)}
                 className="flex items-center w-full px-3 py-2 rounded hover:bg-gray-700"
               >
                 {item.icon}

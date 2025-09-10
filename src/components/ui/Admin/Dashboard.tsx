@@ -12,7 +12,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
   return (
     <div className="flex h-screen">
       {/* Sidebar */}
-      <Sidebar onNavigate={(route) => console.log("Navigate to", route)} />
+      <Sidebar/>
 
       {/* Main content */}
       <div className="flex-1 flex flex-col">

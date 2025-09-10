@@ -44,3 +44,24 @@ body {
 .sign_in:hover {
   background-color: #00995c;
 }
+
+.minimal-textbox {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid #D5D7DA;
+  border-radius: 8px;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.minimal-textbox::placeholder {
+  color: #9a9ca0;
+}
+
+.minimal-textbox:focus {
+  border-color: #D5D7DA;
+}

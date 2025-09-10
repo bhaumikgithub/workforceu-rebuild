@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient,Prisma  } from '@prisma/client';
+import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
@@ -83,4 +84,84 @@ export async function GET(req: NextRequest) {
     }));
 
     return NextResponse.json({ data, total, page: parseInt(page) });
+}
+
+export async function POST(req: Request) {
+  try {
+    const data = await req.json();
+
+    // 1. Create Tenant
+    const tenant = await prisma.subdomains.create({
+      data: {
+        name: data.company_name,
+        domain: data.subdomain_value, // assuming subdomain
+        company_type_id: Number(data.company_type_id),
+        status: "active",
+      },
+    });
+
+    // 2. Create User
+    const hashedPassword = await bcrypt.hash(data.password, 10);
+    const user = await prisma.users.create({
+      data: {
+        first_name: data.first_name,
+        last_name: data.last_name,
+        email: data.email,
+        phone_number: data.phone,
+        mobile: data.mobile,
+        fax: data.fax,
+        subdomain_id: tenant.id,
+        password: hashedPassword,
+        account_type: data.account_type,
+        timezone: data.timezone,
+        location_id: data.location_name,
+        pay_type: data.payment_type,
+        country_id: Number(data.country_id),
+        state_id: Number(data.state_id),
+        city: data.city,
+        address: data.address,
+        zip_code: data.pincode,
+        user_type: "po_user"
+      },
+    });
+
+    // // 3. Handle Stripe subscription if payment_type is 'CC'
+    // if (data.payment_type === "CC") {
+    //   // Create Stripe Customer
+    //   const customer = await stripe.customers.create({
+    //     email: user.email,
+    //     name: `${user.first_name} ${user.last_name}`,
+    //   });
+
+    //   // Attach Payment Method
+    //   if (!data.paymentMethod) {
+    //     return NextResponse.json({ message: "Payment method required" }, { status: 400 });
+    //   }
+
+    //   await stripe.paymentMethods.attach(data.paymentMethod, {
+    //     customer: customer.id,
+    //   });
+
+    //   // Set default payment method
+    //   await stripe.customers.update(customer.id, {
+    //     invoice_settings: { default_payment_method: data.paymentMethod },
+    //   });
+
+    //   // Create subscription
+    //   const subscriptionData: Stripe.SubscriptionCreateParams = {
+    //     customer: customer.id,
+    //     items: [{ price: data.subscription_plan }],
+    //     expand: ["latest_invoice.payment_intent"],
+    //   };
+
+    //   if (data.coupon) subscriptionData.coupon = data.coupon;
+
+    //   await stripe.subscriptions.create(subscriptionData);
+    // }
+
+    return NextResponse.json({ message: "Public User created successfully", user });
+  } catch (err: any) {
+    console.error(err);
+    return NextResponse.json({ message: err.message || "Failed to create user" }, { status: 500 });
+  }
 }

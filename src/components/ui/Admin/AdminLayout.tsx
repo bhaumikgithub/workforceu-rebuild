@@ -1,3 +1,4 @@
+// components/ui/Admin/AdminLayout.tsx
 "use client";
 
 import Header from "./Header";
@@ -5,13 +6,12 @@ import Sidebar from "./Sidebar";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 
-export default function AdminLayout({
-  children,
-  pageTitle = "Welcome to Our site",
-}: {
+interface AdminLayoutProps {
   children: React.ReactNode;
-  pageTitle?: string;
-}) {
+  pageTitle?: string; // already exists
+}
+
+export default function AdminLayout({ children, pageTitle = "Welcome" }: AdminLayoutProps) {
   const { user, logout } = useAuth();
   const router = useRouter();
 

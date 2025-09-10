@@ -36,7 +36,7 @@ export default function Header({ pageTitle = "Admin", user, onLogout }: Props) {
             alt="Profile"
             className="w-8 h-8 rounded-full border"
           />
-          <span className="hidden sm:block">{fullName}</span>
+          <span className="hidden sm:block">Welcome, {fullName}</span>
         </button>
 
         {open && (

@@ -7,8 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "migrate:new": "node scripts/create-migration.js",
-    "migrate:apply": "node scripts/apply-migrations.js"
+    "migrate": "node scripts/migrate.js"
   },
   "dependencies": {
     "@prisma/client": "^6.15.0",

@@ -1,36 +1,39 @@
 import { FieldError, UseFormRegisterReturn } from "react-hook-form";
+import { forwardRef, InputHTMLAttributes } from "react";
 
-interface InputFieldProps {
+interface InputFieldProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   register: UseFormRegisterReturn;
   error?: FieldError;
-  type?: string;
-  placeholder?: string;
-  className?: string; // optional extra class
-  addon?: string; // extra addon (suffix text)
+  className?: string; // extra class
+  addon?: string; // suffix text
 }
 
-export default function InputField({
+// forwardRef is needed so you can pass ref from parent (cityInputRef)
+const InputField = forwardRef<HTMLInputElement, InputFieldProps>(({
   label,
   register,
   error,
-  type = "text",
-  placeholder,
   className = "",
   addon,
-}: InputFieldProps) {
+  ...rest
+}, ref) => {
   return (
     <div className="space-y-1">
       <div className="flex items-center border rounded-lg px-3 py-2 minimal-textbox">
         <input
-          type={type}
-          placeholder={placeholder}
-          {...register}
           className={`flex-1 outline-none bg-transparent ${className}`}
+          {...register}
+          ref={ref || register.ref}
+          {...rest}
         />
         {addon && <span className="ml-2 text-gray-600 whitespace-nowrap">{addon}</span>}
       </div>
       {error && <p className="text-red-600 text-sm">{error.message}</p>}
     </div>
   );
-}
+});
+
+InputField.displayName = "InputField";
+
+export default InputField;

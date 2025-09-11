@@ -7,50 +7,79 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ---------------- MODELS ----------------
+
 model users {
-  id                                Int                     @id @default(autoincrement())
-  subdomain_id                      Int?
-  first_name                        String?
-  last_name                         String?
-  user_name                         String?
-  email                             String?
-  password                          String?                 @db.Text
-  original_password                 String?                 @db.Text
-  mobile                            String?                 @db.VarChar(50)
-  phone_number                      String?                 @db.VarChar(50)
-  address                           String?                 @db.Text
-  address_2                         String?                 @db.Text
-  city                              String?                 @db.VarChar(75)
-  state_id                          Int?
-  country_id                        Int?
-  zip_code                          String?                 @db.VarChar(20)
-  time_zone_id                      Int?
-  gender                            String?
-  birth_date                        DateTime?
-  fax                               String?                 @db.VarChar(50)
-  email_verified_at                 DateTime?               @db.Timestamp(0)
-  profile_headshot                  String?
-  company_logo                      String?
-  user_type                         UserTypes?
-  owner_id                          Int?
-  department_id                     Int?
-  location_id                       Int?
-  position                          String?                 @db.VarChar(75)
-  pay_type                          PayType?
-  review_date                       DateTime?
-  reimbursement                     String?                 @db.VarChar(75)
-  date_employed                     DateTime?
-  hire_date                         DateTime?
-  salary                            String?                 @db.VarChar(75)
-  status                            UserStatus?             @default(active)
-  remember_token                    String?                 @db.VarChar(100)
+  id Int @id @default(autoincrement()) @db.UnsignedInt
+
+  subdomain_id Int?
+  subdomain    subdomains? @relation(fields: [subdomain_id], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  // Personal info
+  first_name        String? @db.VarChar(191)
+  last_name         String? @db.VarChar(191)
+  user_name         String? @db.VarChar(191)
+  email             String? @db.VarChar(191)
+  password          String? @db.Text
+  original_password String? @db.Text
+  mobile            String? @db.VarChar(50)
+  phone_number      String? @db.VarChar(50)
+  address           String? @db.Text
+  address_2         String? @db.Text
+  city              String? @db.VarChar(75)
+  state_id          Int?    @db.UnsignedInt
+  country_id        Int?    @db.UnsignedInt
+
+  zip_code          String?   @db.VarChar(20)
+  time_zone_id      Int?      @db.UnsignedInt
+  gender            String?
+  birth_date        DateTime?
+  fax               String?   @db.VarChar(50)
+  email_verified_at DateTime? @db.Timestamp(0)
+  profile_headshot  String?
+  company_logo      String?
+
+  state    states?    @relation(fields: [state_id], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  country  countries? @relation(fields: [country_id], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  timezone timezones? @relation(fields: [time_zone_id], references: [id], onUpdate: Cascade, onDelete: Cascade)
+
+  // User type: admin, po, so — optional for migration
+  user_type UserTypes?
+
+  // Self-relation: owner for SO users
+  owner_id Int?
+  owner    users?  @relation("OwnerSO", fields: [owner_id], references: [id])
+  so_users users[] @relation("OwnerSO")
+
+  // Employee info
+  department_id Int?
+  location_id   Int?
+  position      String?   @db.VarChar(75)
+  pay_type      PayType?
+  review_date   DateTime?
+  reimbursement String?   @db.VarChar(75)
+  date_employed DateTime?
+  hire_date     DateTime?
+  salary        String?   @db.VarChar(75)
+
+  department departments? @relation(fields: [department_id], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  location   locations?   @relation(fields: [location_id], references: [id], onUpdate: Cascade, onDelete: Cascade)
+
+  status         UserStatus? @default(active)
+  remember_token String?     @db.VarChar(100)
+
+  //Account setting details
   account_type                      Int?
   reminder_messenger_emails         RemainderNotifications?
   reminder_task_notification_emails RemainderNotifications?
   last_login                        DateTime?
-  created_at                        DateTime                @default(now())
-  updated_at                        DateTime                @updatedAt
-  deleted_at                        DateTime?
+
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+  deleted_at DateTime?
+
+  subscriptions  Subscription[]
+  paymentMethods PaymentMethod[]
 
   @@index([subdomain_id])
   @@index([state_id])
@@ -58,12 +87,14 @@ model users {
   @@index([time_zone_id])
   @@index([department_id])
   @@index([location_id])
+  @@map("users")
 }
 
 model subdomains {
-  id              Int           @id @default(autoincrement())
+  id Int @id @default(autoincrement()) @db.UnsignedInt
+
   name            String?       @db.VarChar(255)
-  domain          String?
+  domain          String?       @unique @db.VarChar(191)
   company_type_id Int?
   theme_config    String?       @db.VarChar(255)
   status          commonStatus?
@@ -72,87 +103,124 @@ model subdomains {
   created_at      DateTime      @default(now())
   updated_at      DateTime      @updatedAt
   deleted_at      DateTime?
+
+  // Relations
+  users        users[]
+  departments  departments[]
+  locations    locations[]
+  company_type company_types? @relation(fields: [company_type_id], references: [id])
+
+  @@map("subdomains")
 }
 
 model departments {
-  id              Int          @id @default(autoincrement())
-  subdomain_id    Int
+  id              Int          @id @default(autoincrement()) @db.UnsignedInt
+  subdomain_id    Int          @db.UnsignedInt
   department_name String       @db.VarChar(255)
   status          commonStatus @default(active)
   created_at      DateTime     @default(now())
   updated_at      DateTime     @updatedAt
   deleted_at      DateTime?
 
+  subdomain subdomains @relation(fields: [subdomain_id], references: [id])
+  users     users[]
+
   @@index([subdomain_id])
+  @@map("departments")
 }
 
 model locations {
-  id            Int          @id @default(autoincrement())
-  subdomain_id  Int
+  id            Int          @id @default(autoincrement()) @db.UnsignedInt
+  subdomain_id  Int          @db.UnsignedInt
   location_name String       @db.VarChar(255)
   status        commonStatus @default(active)
   created_at    DateTime     @default(now())
   updated_at    DateTime     @updatedAt
   deleted_at    DateTime?
 
+  subdomain subdomains @relation(fields: [subdomain_id], references: [id])
+  users     users[]
+
   @@index([subdomain_id])
+  @@map("locations")
 }
 
 model countries {
-  id         Int          @id @default(autoincrement())
+  id         Int          @id @default(autoincrement()) @db.UnsignedInt
   name       String       @db.VarChar(255)
   status     commonStatus @default(active)
   created_at DateTime?    @db.DateTime(0)
   updated_at DateTime?    @db.DateTime(0)
   deleted_at DateTime?    @db.DateTime(0)
+
+  states states[]
+  users  users[]
+
+  @@map("countries")
 }
 
 model states {
-  id         Int          @id @default(autoincrement())
-  country_id Int
+  id         Int          @id @default(autoincrement()) @db.UnsignedInt
+  country_id Int          @db.UnsignedInt
   name       String
   status     commonStatus @default(active)
   created_at DateTime?    @db.Timestamp(0)
   updated_at DateTime?    @db.Timestamp(0)
   deleted_at DateTime?    @db.Timestamp(0)
 
+  country countries @relation(fields: [country_id], references: [id])
+  users   users[]
+  cities  City[]
+
   @@index([country_id])
+  @@map("states")
 }
 
 model timezones {
-  id         Int          @id @default(autoincrement())
+  id         Int          @id @default(autoincrement()) @db.UnsignedInt
   name       String?
   utc        String?
   status     commonStatus @default(active)
   created_at DateTime?    @db.Timestamp(0)
   updated_at DateTime?    @db.Timestamp(0)
   deleted_at DateTime?    @db.Timestamp(0)
+
+  users users[]
+
+  @@map("timezones")
 }
 
 model company_types {
-  id          Int          @id @default(autoincrement())
+  id          Int          @id @default(autoincrement()) @db.UnsignedInt
   name        String       @db.Text
   description String       @db.LongText
   status      commonStatus @default(active)
   created_at  DateTime     @default(now())
   updated_at  DateTime     @updatedAt
   deleted_at  DateTime?
+
+  subdomains subdomains[]
+
+  @@map("company_types")
 }
 
 model Subscription {
-  id                          Int       @id @default(autoincrement())
-  plan_id                     String?
-  user_id                     Int?      @map("user_id")
-  stripe_id                   String?   @map("subscription_id")
+  id      Int     @id @default(autoincrement()) @db.UnsignedInt
+  plan_id String?
+  user_id Int?    @map("user_id")
+
+  user users? @relation(fields: [user_id], references: [id], onUpdate: Cascade, onDelete: Cascade)
+
+  stripe_id                   String?   @map("subscription_id") // Stripe subscription ID
   subscription_start_date     DateTime? @map("subscription_start_date")
   subscription_end_date       DateTime? @map("subscription_end_date")
   employee_limit              String?   @map("employee_limit")
-  stripe_customer_id          String?   @map("customer_id")
-  coupan_id                   String?   @map("coupan_id")
-  interval                    String?   @map("interval")
+  stripe_customer_id          String?   @map("customer_id") // Stripe customer ID
+  coupan_id                   String?   @map("coupan_id") // Stripe coupon ID (nullable)
+  interval                    String?   @map("interval") // month, year, etc.
   plan_name                   String?   @map("plan_name")
   stripe_status               Boolean   @default(true) @map("is_active")
-  invoice_id                  String?   @map("invoice_id")
+  invoice_id                  String?   @map("invoice_id") // Stripe invoice ID
   amount                      Float?    @default(0)
   last_payment_attempted_date DateTime? @map("last_payment_attempted_date")
   created_at                  DateTime  @default(now())
@@ -163,8 +231,8 @@ model Subscription {
 }
 
 model PaymentMethod {
-  id                       Int       @id @default(autoincrement())
-  user_id                  Int
+  id                       Int       @id @default(autoincrement()) @db.UnsignedInt
+  user_id                  Int       @db.UnsignedInt
   stripe_payment_method_id String    @map("stripe_payment_method_id")
   card_brand               String?   @map("card_brand")
   last_4                   String?   @map("card_last4")
@@ -174,27 +242,31 @@ model PaymentMethod {
   updated_at               DateTime  @updatedAt
   deleted_at               DateTime?
 
+  user users? @relation(fields: [user_id], references: [id], onUpdate: Cascade, onDelete: Cascade)
+
   @@map("payment_methods")
 }
 
-model migrations {
-  id         Int       @id @default(autoincrement())
-  filename   String    @unique(map: "filename")
-  applied_at DateTime? @default(now()) @db.Timestamp(0)
+model City {
+  id         Int          @id @default(autoincrement()) @db.UnsignedInt
+  state_id   Int          @db.UnsignedInt
+  name       String
+  status     commonStatus @default(active)
+  created_at DateTime?    @db.Timestamp(0)
+  updated_at DateTime?    @db.Timestamp(0)
+  deleted_at DateTime?    @db.Timestamp(0)
 
-  @@map("_migrations")
+  // Relation with State
+  state states @relation(fields: [state_id], references: [id])
+
+  @@map("cities")
 }
 
-model cities {
-  id         Int           @id @default(autoincrement()) @db.UnsignedInt
-  state_id   Int
-  name       String
-  status     cities_status @default(active)
-  created_at DateTime?     @db.Timestamp(0)
-  updated_at DateTime?     @db.Timestamp(0)
-  deleted_at DateTime?     @db.Timestamp(0)
 
-  @@index([state_id], map: "idx_state_id")
+// ---------------- ENUMS ----------------
+enum Gender {
+  male
+  female
 }
 
 enum PayType {
@@ -224,9 +296,4 @@ enum UserTypes {
 enum RemainderNotifications {
   yes
   no
-}
-
-enum cities_status {
-  active
-  inactive
 }

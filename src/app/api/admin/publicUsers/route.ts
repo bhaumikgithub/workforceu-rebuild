@@ -62,9 +62,13 @@ export async function GET(req: NextRequest) {
         status: true,
         subdomain: {
             select: {
-            domain: true,
-            name: true,
-            company_type: { select: { name: true } },
+              domain: true,
+              name: true,
+              company_type: { 
+                select: { 
+                  name: true 
+                } 
+              },
             },
         },
         },
@@ -113,7 +117,7 @@ export async function POST(req: Request) {
         subdomain_id: tenant.id,
         password: hashedPassword,
         account_type: data.account_type,
-        timezone: data.timezone,
+        time_zone_id: data.timezone,
         location_id: data.location_name,
         pay_type: data.payment_type,
         country_id: Number(data.country_id),

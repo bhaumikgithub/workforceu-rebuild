@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "migrate:new": "node scripts/create-migration.js",
+    "migrate:apply": "node scripts/apply-migrations.js"
   },
   "dependencies": {
     "@prisma/client": "^6.15.0",
@@ -36,6 +38,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "autoprefixer": "^10.4.21",
+    "cross-env": "^10.0.0",
     "eslint": "^9",
     "eslint-config-next": "15.4.6",
     "postcss": "^8.5.6",

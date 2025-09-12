@@ -7,6 +7,7 @@ interface InputFieldProps extends InputHTMLAttributes<HTMLInputElement> {
   error?: FieldError;
   className?: string; // extra class
   addon?: string; // suffix text
+  warning?: React.ReactNode;
 }
 
 // forwardRef is needed so you can pass ref from parent (cityInputRef)
@@ -16,6 +17,7 @@ const InputField = forwardRef<HTMLInputElement, InputFieldProps>(({
   error,
   className = "",
   addon,
+  warning,
   ...rest
 }, ref) => {
   return (
@@ -30,6 +32,9 @@ const InputField = forwardRef<HTMLInputElement, InputFieldProps>(({
         {addon && <span className="ml-2 text-gray-600 whitespace-nowrap">{addon}</span>}
       </div>
       {error && <p className="text-red-600 text-sm">{error.message}</p>}
+      {!error && warning && (
+          <p className="text-yellow-600 text-sm">{warning}</p>
+      )}
     </div>
   );
 });

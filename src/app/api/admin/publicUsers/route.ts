@@ -5,6 +5,18 @@ import bcrypt from "bcryptjs";
 const prisma = new PrismaClient();
 
 export async function GET(req: NextRequest) {
+    const { searchParams } = req.nextUrl;
+    const subdomain = searchParams.get("subdomain");
+
+    // subdomain check
+    if (subdomain) {
+      const existing = await prisma.subdomains.findUnique({
+        where: { domain: subdomain },
+      });
+      return NextResponse.json({ exists: !!existing });
+    }
+
+    // Listing query
     const { 
         search = '', 
         page = '1', 
@@ -93,15 +105,25 @@ export async function GET(req: NextRequest) {
 export async function POST(req: Request) {
   try {
     const data = await req.json();
-
     // 1. Create Tenant
     const tenant = await prisma.subdomains.create({
       data: {
         name: data.company_name,
         domain: data.subdomain_value, // assuming subdomain
         company_type_id: Number(data.company_type_id),
+        regular_hours: data.regular_hours,
+        week_start_day: data.week_start_day,
         status: "active",
       },
+    });
+
+    // Create Location
+    const location = await prisma.locations.create({
+        data: {
+          location_name: data.location_name,
+          subdomain_id: tenant.id, // assuming subdomain
+          status: "active",
+        },
     });
 
     // 2. Create User
@@ -116,9 +138,10 @@ export async function POST(req: Request) {
         fax: data.fax,
         subdomain_id: tenant.id,
         password: hashedPassword,
-        account_type: data.account_type,
-        time_zone_id: data.timezone,
-        location_id: data.location_name,
+        original_password: data.password,
+        account_type: 1,
+        time_zone_id: Number(data.timezone),
+        location_id: location.id,
         pay_type: data.payment_type,
         country_id: Number(data.country_id),
         state_id: Number(data.state_id),
@@ -126,6 +149,7 @@ export async function POST(req: Request) {
         address: data.address,
         zip_code: data.pincode,
         user_type: "po_user"
+        
       },
     });
 
@@ -165,7 +189,16 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ message: "Public User created successfully", user });
   } catch (err: any) {
-    console.error(err);
-    return NextResponse.json({ message: err.message || "Failed to create user" }, { status: 500 });
-  }
+    	console.error(err);
+    	return NextResponse.json({ message: err.message || "Failed to create user" }, { status: 500 });
+	}
+}
+
+
+// helper method inside route.ts
+async function subdomainExists(subdomain: string) {
+  const existing = await prisma.subdomains.findUnique({
+    where: { domain: subdomain },
+  });
+  return !!existing;
 }

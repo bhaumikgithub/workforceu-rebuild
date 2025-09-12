@@ -16,6 +16,7 @@ import {
   passwordMismatchMsg,
   minPasswordLength
 } from '@/utils/validation';
+import { AlertTriangle } from "lucide-react";
 
 interface CompanyType { id: number; name: string; }
 interface Timezone { id: number; name: string; utc: string; }
@@ -41,6 +42,7 @@ interface FormData {
 
   full_name: string;
   address: string;
+  address2: string;
   city: string;
   state_id: string;
   pincode: string;
@@ -55,64 +57,69 @@ interface FormData {
   week_start_day: string;
 }
 
+interface ButtonGroupProps {
+    handleCancel: () => void;
+}
+
+
 export default function AddPublicUserPage() {
-  const router = useRouter();
-  const [companyTypes, setCompanyTypes] = useState<CompanyType[]>([]);
-  const [timezones, setTimezones] = useState<Timezone[]>([]);
-  const [countries, setCountries] = useState<Country[]>([]);
-  const [states, setStates] = useState<{id:number; name:string}[]>([]);
-  const [citySuggestions, setCitySuggestions] = useState<City[]>([]);
-  const [rootDomain, setRootDomain] = useState('');
-  const [highlightedIndex, setHighlightedIndex] = useState<number>(-1);
-  const [selectedCity, setSelectedCity] = useState<City | null>(null);
-  const [cityInputValue, setCityInputValue] = useState("");
-  const cityInputRef = useRef<HTMLInputElement | null>(null);
+    const router = useRouter();
+    const [companyTypes, setCompanyTypes] = useState<CompanyType[]>([]);
+    const [timezones, setTimezones] = useState<Timezone[]>([]);
+    const [countries, setCountries] = useState<Country[]>([]);
+    const [states, setStates] = useState<{id:number; name:string}[]>([]);
+    const [citySuggestions, setCitySuggestions] = useState<City[]>([]);
+    const [rootDomain, setRootDomain] = useState('');
+    const [highlightedIndex, setHighlightedIndex] = useState<number>(-1);
+    const [selectedCity, setSelectedCity] = useState<City | null>(null);
+    const [cityInputValue, setCityInputValue] = useState("");
+    const [subdomainExists, setSudomainExists] = useState<React.ReactNode>("");
 
-  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<FormData>({
-    defaultValues: { account_type: '1', regular_hours: '40' }
-  });
+    const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<FormData>({
+        defaultValues: { account_type: '1', regular_hours: '40' }
+    });
 
-  const password = watch('password');
-  const selectedCountry = watch('country_id');
-  const selectedState = watch('state_id');
-  const cityInput = watch('city');
+    const password = watch('password');
+    const selectedCountry = watch('country_id');
+    const selectedState = watch('state_id');
+    const cityInput = watch('city');
 
   // Root domain
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const host = window.location.hostname;
-      if (host.includes('localhost') || host.includes('127.0.0.1') || host.includes('wfu.net')) setRootDomain('wfu.net');
-      else if (host.includes('dev')) setRootDomain('workforceu.net');
-      else setRootDomain('officeautomatedhub.com');
-    }
-  }, []);
-
-  // Fetch master data
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await get('/api/admin/masterData');
-        setCompanyTypes(res.companyTypes || []);
-        setTimezones(res.timezones || []);
-        setCountries(res.countries || []);
-      } catch {
-        toast.error("Failed to fetch master data");
+    useEffect(() => {
+      if (typeof window !== 'undefined') {
+        const host = window.location.hostname;
+        if (host.includes('localhost') || host.includes('127.0.0.1') || host.includes('wfu.net')) setRootDomain('wfu.net');
+        else if (host.includes('dev')) setRootDomain('workforceu.net');
+        else setRootDomain('officeautomatedhub.com');
       }
-    })();
-  }, []);
+    }, []);
 
-  // Fetch states
-  useEffect(() => {
-    if (!selectedCountry) return setStates([]);
-    (async () => {
-      try {
-        const res = await get(`/api/admin/states?country_id=${selectedCountry}`);
-        setStates(res || []);
-      } catch {
-        toast.error('Failed to fetch states');
-      }
-    })();
-  }, [selectedCountry]);
+    // Fetch master data
+    useEffect(() => {
+      (async () => {
+        try {
+          const res = await get('/api/admin/masterData');
+          setCompanyTypes(res.companyTypes || []);
+          setTimezones(res.timezones || []);
+          setCountries(res.countries || []);
+        } catch {
+          toast.error("Failed to fetch master data");
+        }
+      })();
+    }, []);
+
+    // Fetch states
+    useEffect(() => {
+      if (!selectedCountry) return setStates([]);
+      (async () => {
+        try {
+          const res = await get(`/api/admin/states?country_id=${selectedCountry}`);
+          setStates(res || []);
+        } catch {
+          toast.error('Failed to fetch states');
+        }
+      })();
+    }, [selectedCountry]);
 
     useEffect(() => {
         if (!selectedState || !cityInputValue) {
@@ -134,47 +141,72 @@ export default function AddPublicUserPage() {
     }, [selectedState, cityInputValue]);
 
 
-  // Clear selectedCity if user types again
-  useEffect(() => {
-    if (selectedCity && cityInput !== selectedCity.name) setSelectedCity(null);
-  }, [cityInput]);
+    // Clear selectedCity if user types again
+    useEffect(() => {
+        if (selectedCity && cityInput !== selectedCity.name) setSelectedCity(null);
+    }, [cityInput]);
 
-  // Arrow key navigation
-  const handleCityKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (!citySuggestions.length) return;
+    // Arrow key navigation
+    const handleCityKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (!citySuggestions.length) return;
 
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      setHighlightedIndex(prev => (prev + 1) % citySuggestions.length);
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      setHighlightedIndex(prev => (prev - 1 + citySuggestions.length) % citySuggestions.length);
-    } else if (e.key === 'Enter') {
-      e.preventDefault();
-      if (highlightedIndex >= 0) {
-        const city = citySuggestions[highlightedIndex];
-        setValue('city', city.name);
-        setSelectedCity(city);
+        if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setHighlightedIndex(prev => (prev + 1) % citySuggestions.length);
+        } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setHighlightedIndex(prev => (prev - 1 + citySuggestions.length) % citySuggestions.length);
+        } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (highlightedIndex >= 0) {
+            const city = citySuggestions[highlightedIndex];
+            setValue('city', city.name);
+            setSelectedCity(city);
+            setCitySuggestions([]);
+        }
+        } else if (e.key === 'Escape') {
         setCitySuggestions([]);
-      }
-    } else if (e.key === 'Escape') {
-      setCitySuggestions([]);
-    }
-  };
+        }
+    };
 
-  const onSubmit = async (data: FormData) => {
-    if (data.password !== data.confirm_password) {
-      toast.error(passwordMismatchMsg);
-      return;
+    //Check subdomain exists or not
+    const handleSubdomainCheck = async (value: string) => {
+    if (!value) {
+        setSudomainExists("");
+        return;
     }
+
     try {
-      await post('/api/admin/publicUsers', data);
-      toast.success('Public user added successfully!');
-      router.push('/admin/publicUsers');
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Failed to add user');
+        const res = await fetch(`/api/admin/publicUsers?subdomain=${value}`);
+        const data = await res.json();
+        if (data.exists) {
+            setSudomainExists(
+            <div className="flex items-center text-yellow-600 text-sm">
+                <AlertTriangle className="w-4 h-4 mr-1" />
+                <span>This subdomain already exists</span>
+            </div>
+            );
+        } else {
+            setSudomainExists("");
+        }
+    } catch (err) {
+        console.error("Subdomain check failed", err);
     }
-  };
+    };
+
+    const onSubmit = async (data: FormData) => {
+        if (data.password !== data.confirm_password) {
+        toast.error(passwordMismatchMsg);
+        return;
+        }
+        try {
+        await post('/api/admin/publicUsers', data);
+        toast.success('Public user added successfully!');
+        router.push('/admin/publicUsers');
+        } catch (err: any) {
+        toast.error(err?.response?.data?.message || 'Failed to add user');
+        }
+    };
 
   const handleCancel = () => router.push('/admin/publicUsers');
 
@@ -202,7 +234,7 @@ export default function AddPublicUserPage() {
                 <InputField label="Full Name" placeholder="Full Name" register={register("full_name", { required: requiredMsg("Full Name") })} error={errors.full_name} />
               </div>
               <InputField label="Address 1" placeholder="Address 1" register={register("address", { required: requiredMsg("Address") })} error={errors.address} />
-              <InputField label="Address 2" placeholder="Address 2" register={register("address")} />
+              <InputField label="Address 2" placeholder="Address 2" register={register("address2")} />
               <SelectField label="Country" register={register("country_id", { required: requiredMsg("Country") })} options={[{ value: "", label: "Choose Country" }, ...countries.map(c => ({ value: c.id, label: c.name }))]} error={errors.country_id} />
               <SelectField label="State" register={register("state_id", { required: requiredMsg("State") })} options={[{ value: "", label: "Choose State" }, ...states.map(s => ({ value: s.id, label: s.name }))]} error={errors.state_id} />
               
@@ -263,8 +295,21 @@ export default function AddPublicUserPage() {
           <InputField label="Location" placeholder="Location" register={register('location_name', { required: requiredMsg('Location') })} error={errors.location_name} />
           <InputField label="Password" type="password" placeholder="Password" register={register('password', { required: requiredMsg('Password'), minLength: { value: minPasswordLength, message: `Password must be at least ${minPasswordLength} characters` } })} error={errors.password} />
           <InputField label="Confirm Password" type="password" placeholder="Confirm Password" register={register('confirm_password', { required: requiredMsg('Confirm Password'), validate: value => value === password || passwordMismatchMsg })} error={errors.confirm_password} />
-          <InputField label="Client ID" placeholder="Client ID" register={register("subdomain_value", { required: requiredMsg("Client ID") })} error={errors.subdomain_value} addon={`.${rootDomain}`} />
-
+          <InputField
+                label="Client ID"
+                placeholder="Client ID"
+                register={register("subdomain_value", {
+                    required: requiredMsg("Client ID"),
+                    pattern: {
+                    value: /^[a-z0-9]+$/,
+                    message: "Only lowercase letters and numbers allowed",
+                    },
+                    onBlur: (e) => handleSubdomainCheck(e.target.value), // check when user leaves field
+                })}
+                error={errors.subdomain_value}
+                warning={subdomainExists}
+                addon={`.${rootDomain}`}
+            />
           {/* Payment */}
           <div className="md:col-span-2 mt-10">
             <h2 className="text-lg font-semibold mb-4 border-b pb-2">Payment Information</h2>

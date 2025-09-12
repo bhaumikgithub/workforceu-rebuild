@@ -53,14 +53,9 @@ interface FormData {
   card_expiry?: string;
   card_cvv?: string;
 
-  regular_hours: string;
+  regular_hours: number;
   week_start_day: string;
 }
-
-interface ButtonGroupProps {
-    handleCancel: () => void;
-}
-
 
 export default function AddPublicUserPage() {
     const router = useRouter();
@@ -76,7 +71,7 @@ export default function AddPublicUserPage() {
     const [subdomainExists, setSudomainExists] = useState<React.ReactNode>("");
 
     const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<FormData>({
-        defaultValues: { account_type: '1', regular_hours: '40' }
+        defaultValues: { account_type: '1', regular_hours: 40 }
     });
 
     const password = watch('password');

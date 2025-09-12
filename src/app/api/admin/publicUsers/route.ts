@@ -111,8 +111,8 @@ export async function POST(req: Request) {
         name: data.company_name,
         domain: data.subdomain_value, // assuming subdomain
         company_type_id: Number(data.company_type_id),
-        regular_hours: data.regular_hours,
-        week_start_day: data.week_start_day,
+        regular_hours: Number(data.regular_hours),
+        week_start_day: Number(data.week_start_day),
         status: "active",
       },
     });
@@ -142,7 +142,6 @@ export async function POST(req: Request) {
         account_type: 1,
         time_zone_id: Number(data.timezone),
         location_id: location.id,
-        pay_type: data.payment_type,
         country_id: Number(data.country_id),
         state_id: Number(data.state_id),
         city: data.city,
@@ -192,13 +191,4 @@ export async function POST(req: Request) {
     	console.error(err);
     	return NextResponse.json({ message: err.message || "Failed to create user" }, { status: 500 });
 	}
-}
-
-
-// helper method inside route.ts
-async function subdomainExists(subdomain: string) {
-  const existing = await prisma.subdomains.findUnique({
-    where: { domain: subdomain },
-  });
-  return !!existing;
 }

@@ -39,7 +39,7 @@ export default function LoginPage() {
         return;
       }
 
-      login(res.data.token, res.data.user);
+      login(res.data.user,res.data.token);
       toast.success("Login successful!", { id: toastId });
       router.push("/admin/dashboard");
     } catch (err: any) {

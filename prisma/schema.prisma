@@ -211,18 +211,18 @@ model Subscription {
 
   user users? @relation(fields: [user_id], references: [id], onUpdate: Cascade, onDelete: Cascade)
 
-  stripe_id                   String?   @map("subscription_id") // Stripe subscription ID
-  subscription_start_date     DateTime? @map("subscription_start_date")
-  subscription_end_date       DateTime? @map("subscription_end_date")
-  employee_limit              String?   @map("employee_limit")
-  stripe_customer_id          String?   @map("customer_id") // Stripe customer ID
-  coupan_id                   String?   @map("coupan_id") // Stripe coupon ID (nullable)
-  interval                    String?   @map("interval") // month, year, etc.
-  plan_name                   String?   @map("plan_name")
-  stripe_status               Boolean   @default(true) @map("is_active")
-  invoice_id                  String?   @map("invoice_id") // Stripe invoice ID
-  amount                      Float?    @default(0)
-  last_payment_attempted_date DateTime? @map("last_payment_attempted_date")
+  stripe_subscription_id      String?
+  subscription_start_date     DateTime?
+  subscription_end_date       DateTime?
+  employee_limit              String?
+  customer_id                 String?
+  coupan_id                   String?   
+  interval                    String?   
+  plan_name                   String?   
+  stripe_status               Boolean   
+  invoice_id                  String?   
+  amount                      Float?    
+  last_payment_attempted_date DateTime?
   created_at                  DateTime  @default(now())
   updated_at                  DateTime  @updatedAt
   deleted_at                  DateTime?

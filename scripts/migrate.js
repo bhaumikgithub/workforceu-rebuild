@@ -27,7 +27,7 @@ async function applyMigrations() {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
   `);
 
-  const migrationDir = path.join(__dirname, '../migrations/sql');
+  const migrationDir = path.join(__dirname, '../migrations');
   const files = fs.readdirSync(migrationDir).filter(f => f.endsWith('.sql')).sort();
 
   for (const file of files) {

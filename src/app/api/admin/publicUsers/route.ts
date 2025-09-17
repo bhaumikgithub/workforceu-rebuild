@@ -111,28 +111,29 @@ export async function GET(req: NextRequest) {
 export async function POST(req: Request) {
     try {
         const data = await req.json();
-        // 1. Create Tenant
+
+        // 1️. Create Tenant
         const tenant = await prisma.subdomains.create({
             data: {
                 name: data.company_name,
-                domain: data.subdomain_value, // assuming subdomain
+                domain: data.subdomain_value,
                 company_type_id: Number(data.company_type_id),
                 regular_hours: Number(data.regular_hours),
                 week_start_day: Number(data.week_start_day),
-                status: "active",
+                status: 'active',
             },
         });
 
-        // Create Location
+        // 2️. Create Location
         const location = await prisma.locations.create({
             data: {
                 location_name: data.location_name,
-                subdomain_id: tenant.id, // assuming subdomain
-                status: "active",
+                subdomain_id: tenant.id,
+                status: 'active',
             },
         });
 
-        // 2. Create User
+        // 3️. Create User
         const hashedPassword = await bcrypt.hash(data.password, 10);
         const user = await prisma.users.create({
             data: {
@@ -153,99 +154,113 @@ export async function POST(req: Request) {
                 city: data.city,
                 address: data.address,
                 zip_code: data.pincode,
-                user_type: "po_user"
-
+                user_type: 'po_user',
             },
         });
 
-        // 3. Handle Stripe subscription if payment_type is 'CC'
-        if (data.payment_type === "CC") {
-            // 1. Create customer
-            const customer = await stripe.customers.create({
-                email: user.email ?? undefined,
-                name: `${user.first_name ?? ""} ${user.last_name ?? ""}`.trim(),
-            });
-
-            // 2. Attach Payment Method
+        // 4️. Handle Stripe subscription
+        if (data.payment_type === 'CC') {
             if (!data.paymentMethod) {
-                return NextResponse.json({ message: "Payment method required" }, { status: 400 });
+                return NextResponse.json({ message: 'Payment method required' }, { status: 400 });
             }
 
-            await stripe.paymentMethods.attach(data.paymentMethod, {
-                customer: customer.id,
+            // Create Stripe customer
+            const customer = await stripe.customers.create({
+                email: user.email ?? undefined,
+                name: `${user.first_name ?? ''} ${user.last_name ?? ''}`.trim(),
             });
 
-            // 3. Set default payment method
+            // Attach payment method & set default
+            await stripe.paymentMethods.attach(data.paymentMethod, { customer: customer.id });
             await stripe.customers.update(customer.id, {
                 invoice_settings: { default_payment_method: data.paymentMethod },
             });
 
-            // 4. Create subscription
-            const subscriptionData: Stripe.SubscriptionCreateParams = {
+            // Create subscription with expand to get payment intent
+            const subscription = await stripe.subscriptions.create({
                 customer: customer.id,
                 items: [{ price: data.subscription_plan }],
-                expand: ["latest_invoice.payment_intent.payment_method"],
-            };
+                expand: ['latest_invoice.payment_intent.payment_method'],
+                discounts: data.coupon ? [{ coupon: data.coupon }] : undefined,
+            });
+            const currentPeriodStart = subscription.items.data[0].current_period_start;
+            const currentPeriodEnd = subscription.items.data[0].current_period_end;
 
-            if (data.coupon) {
-                subscriptionData.discounts = [{ coupon: data.coupon }];
-            }
+            const subscriptionStartDate = currentPeriodStart
+                ? new Date(currentPeriodStart * 1000)
+                : new Date();
 
-            const subscription = await stripe.subscriptions.create(subscriptionData);
+            const subscriptionEndDate = currentPeriodEnd
+                ? new Date(currentPeriodEnd * 1000)
+                : null;
 
+            // Plan info
+            const plan = subscription.items.data[0].plan;
+
+            // Or when retrieving a Plan directly
+            const planObject = await stripe.plans.retrieve(data.subscription_plan, {
+                expand: ['product'], // Expand the product object associated with the plan
+            });
+
+            const planName = planObject.nickname ?? (planObject.product as any)?.name ?? null;
+
+            const interval = plan.interval;
+            const planAmountInDollars = subscription.items.data[0].plan.amount! / 100;
+
+            // Payment intent & card
             const invoice = subscription.latest_invoice as Stripe.Invoice & {
-                payment_intent?: Stripe.PaymentIntent & {
-                    payment_method?: Stripe.PaymentMethod;
-                };
+                payment_intent?: Stripe.PaymentIntent & { payment_method?: Stripe.PaymentMethod };
             };
+            const paymentIntent = invoice?.payment_intent;
+            const card = paymentIntent?.payment_method as Stripe.PaymentMethod | undefined;
 
-            const paymentIntent = invoice.payment_intent;
-            const card = (paymentIntent?.payment_method as Stripe.PaymentMethod)?.card;
+            // Last payment attempted date
+            const lastPaymentAttemptedDate = paymentIntent
+                ? new Date(paymentIntent.created * 1000)
+                : null;
 
-            // 6. Save to DB
+            // Save subscription to DB
             await prisma.subscription.create({
                 data: {
                     user_id: user.id,
                     plan_id: data.subscription_plan,
                     stripe_subscription_id: subscription.id,
-                    subscription_start_date: new Date(),
+                    subscription_start_date: subscriptionStartDate,
+                    subscription_end_date: subscriptionEndDate,
                     employee_limit: data.employee_limit ?? null,
                     customer_id: customer.id,
                     coupan_id: data.coupon ?? null,
-                    interval: subscription.items.data[0].plan.interval,
-                    plan_name:
-                        subscription.items.data[0].plan.nickname ??
-                        (subscription.items.data[0].plan.product as any)?.name ??
-                        null,
+                    interval,
+                    plan_name: planName,
                     stripe_status: true,
                     invoice_id: invoice?.id ?? null,
-                    amount: subscription.items.data[0].plan.amount ?? null,
-                    last_payment_attempted_date: paymentIntent
-                        ? new Date(paymentIntent.created * 1000)
-                        : null,
+                    amount: planAmountInDollars,
+                    last_payment_attempted_date: lastPaymentAttemptedDate,
                 },
             });
 
+            // Save payment method
             await prisma.paymentMethod.create({
                 data: {
                     user_id: user.id,
                     stripe_payment_method_id: data.paymentMethod,
-                    card_brand: card?.brand ?? null,
-                    last_4: card?.last4 ?? null,
-                    exp_month: card?.exp_month ?? null,
-                    exp_year: card?.exp_year ?? null,
+                    card_brand: card?.card?.brand ?? null,
+                    last_4: card?.card?.last4 ?? null,
+                    exp_month: card?.card?.exp_month ?? null,
+                    exp_year: card?.card?.exp_year ?? null,
                 },
             });
 
             return NextResponse.json({
                 subscriptionId: subscription.id,
-                paymentStatus: paymentIntent?.status ?? "unknown",
+                paymentStatus: paymentIntent?.status ?? 'unknown',
             });
         }
 
-        return NextResponse.json({ message: "Public User created successfully", user });
+        // 5️. No credit card, just return user
+        return NextResponse.json({ message: 'Public User created successfully', user });
     } catch (err: any) {
         console.error(err);
-        return NextResponse.json({ message: err.message || "Failed to create user" }, { status: 500 });
+        return NextResponse.json({ message: err.message || 'Failed to create user' }, { status: 500 });
     }
 }

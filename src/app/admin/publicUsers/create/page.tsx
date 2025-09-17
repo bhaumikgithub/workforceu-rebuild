@@ -81,7 +81,7 @@ function PublicUserForm() {
 
     const [plans, setPlans] = useState<Plan[]>([]);
     const [coupons, setCoupons] = useState<Coupon[]>([]);
-
+    const [loading, setLoading] = useState(false);
 
     const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<FormData>({
         defaultValues: { account_type: '1', regular_hours: 40 }
@@ -210,6 +210,7 @@ function PublicUserForm() {
     };
 
     const onSubmit = async (data: FormData) => {
+        setLoading(true); // start loader
         // 1. Validate password match
         if (data.password !== data.confirm_password) {
             toast.error(passwordMismatchMsg);
@@ -270,6 +271,8 @@ function PublicUserForm() {
             router.push("/admin/publicUsers");
         } catch (err: any) {
             toast.error(err?.response?.data?.message || "Failed to add user");
+        } finally {
+            setLoading(false); // stop loader
         }
     };
 
@@ -367,15 +370,17 @@ function PublicUserForm() {
                     addon={`.${rootDomain}`}
                 />
                 {/* Payment */}
-                <div className="md:col-span-2 mt-10">
-                    <h2 className="text-lg font-semibold mb-4 border-b pb-2">Payment Information</h2>
-                    <SelectField label="Plan" register={register('plan_name', { required: requiredMsg('Subscription Plan') })}
-                        options={[{ value: '', label: 'Select Subscription Plan' }, ...plans.map(p => ({ value: p.id, label: `${p.nickname} - ${p.amount} ${p.currency} / ${p.interval}` }))]} error={errors.plan_name} />
+                {watch('payment_type') === "CC" && (
+                    <div className="md:col-span-2 mt-10">
+                        <h2 className="text-lg font-semibold mb-4 border-b pb-2">Payment Information</h2>
+                        <SelectField label="Plan" register={register('plan_name', { required: requiredMsg('Subscription Plan') })}
+                            options={[{ value: '', label: 'Select Subscription Plan' }, ...plans.map(p => ({ value: p.id, label: `${p.nickname} - ${p.amount} ${p.currency} / ${p.interval}` }))]} error={errors.plan_name} />
 
-                    <SelectField label="Coupon" register={register('coupon_code')}
-                        options={[{ value: '', label: 'Select Coupon' }, ...coupons.map(c => ({ value: c.id, label: `${c.percent_off} % off` }))]} />
-                    <StripeCardField label="Card Details" />
-                </div>
+                        <SelectField label="Coupon" register={register('coupon_code')}
+                            options={[{ value: '', label: 'Select Coupon' }, ...coupons.map(c => ({ value: c.id, label: `${c.percent_off} % off` }))]} />
+                        <StripeCardField label="Card Details" />
+                    </div>
+                )}
             </div>
             {/* Working / Overtime */}
             <div className="md:col-span-2 mt-10">

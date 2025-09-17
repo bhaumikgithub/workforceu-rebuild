@@ -65,3 +65,7 @@ body {
 .minimal-textbox:focus {
   border-color: #D5D7DA;
 }
+
+.swal2-title-sm {
+  font-size: 18px !important;     
+}

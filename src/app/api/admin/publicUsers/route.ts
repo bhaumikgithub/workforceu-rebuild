@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
     // subdomain check
     if (subdomain) {
         const existing = await prisma.subdomains.findUnique({
-            where: { domain: subdomain },
+            where: { domain: subdomain, deleted_at: null },
         });
         return NextResponse.json({ exists: !!existing });
     }
@@ -263,4 +263,22 @@ export async function POST(req: Request) {
         console.error(err);
         return NextResponse.json({ message: err.message || 'Failed to create user' }, { status: 500 });
     }
+}
+
+// src/app/api/admin/publicUsers/route.ts
+export async function DELETE(req: Request) {
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get('id');
+
+    if (!id) {
+        return NextResponse.json({ success: false, error: 'Missing id' }, { status: 400 });
+    }
+
+    const userId = parseInt(id);
+    const updatedUser = await prisma.users.update({
+        where: { id: userId },
+        data: { deleted_at: new Date() },
+    });
+
+    return NextResponse.json({ success: true, user: updatedUser });
 }

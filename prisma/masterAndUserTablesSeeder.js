@@ -1,95 +1,95 @@
 import { createConnections, prisma } from "./utils/db.js";
 
-async function main() {
+export async function main() {
     const { externalDb, localDb } = await createConnections();
     // --- Seed countries ---
-    const [countries] = await externalDb.execute('SELECT * FROM countries');
-    for (const country of countries) {
-        await prisma.countries.create({
-            data: {
-                name: country.name,
-                status: country.status || 'active',
-                created_at: country.created_at || new Date(),
-                updated_at: country.updated_at || new Date(),
-                deleted_at: country.deleted_at || null,
-            },
-        });
-    }
+    // const [countries] = await externalDb.execute('SELECT * FROM countries');
+    // for (const country of countries) {
+    //     await prisma.countries.create({
+    //         data: {
+    //             name: country.name,
+    //             status: country.status || 'active',
+    //             created_at: country.created_at || new Date(),
+    //             updated_at: country.updated_at || new Date(),
+    //             deleted_at: country.deleted_at || null,
+    //         },
+    //     });
+    // }
 
     // --- Seed states ---
-    const [states] = await externalDb.execute('SELECT * FROM states');
-    for (const state of states) {
-        await prisma.states.create({
-            data: {
-                name: state.name,
-                country_id: state.country_id,
-                status: state.status || 'active',
-                created_at: state.created_at || new Date(),
-                updated_at: state.updated_at || new Date(),
-                deleted_at: state.deleted_at || null,
-            },
-        });
-    }
+    // const [states] = await externalDb.execute('SELECT * FROM states');
+    // for (const state of states) {
+    //     await prisma.states.create({
+    //         data: {
+    //             name: state.name,
+    //             country_id: state.country_id,
+    //             status: state.status || 'active',
+    //             created_at: state.created_at || new Date(),
+    //             updated_at: state.updated_at || new Date(),
+    //             deleted_at: state.deleted_at || null,
+    //         },
+    //     });
+    // }
 
     // --- Seed company types ---
-    const [company_types] = await externalDb.execute('SELECT * FROM company_types');
-    for (const companyType of company_types) {
-        await prisma.company_types.create({
-            data: {
-                id: companyType.type_id,
-                name: companyType.type_name,
-                description: companyType.type_description,
-                status: companyType.type_active === 1 ? 'active' : 'inactive',
-                created_at: companyType.created_at || new Date(),
-                updated_at: companyType.updated_at || new Date(),
-                deleted_at: companyType.deleted_at || null,
-            },
-        });
-    }
+    // const [company_types] = await externalDb.execute('SELECT * FROM company_types');
+    // for (const companyType of company_types) {
+    //     await prisma.company_types.create({
+    //         data: {
+    //             id: companyType.type_id,
+    //             name: companyType.type_name,
+    //             description: companyType.type_description,
+    //             status: companyType.type_active === 1 ? 'active' : 'inactive',
+    //             created_at: companyType.created_at || new Date(),
+    //             updated_at: companyType.updated_at || new Date(),
+    //             deleted_at: companyType.deleted_at || null,
+    //         },
+    //     });
+    // }
 
     // --- Seed subdomains ---
-    const [subdomains] = await externalDb.execute('SELECT * FROM subdomain');
-    for (const domain of subdomains) {
-        const [owners] = await externalDb.execute(
-            `SELECT company_name, company_type_id FROM members WHERE subdomain_id = ? AND is_primary = 1 LIMIT 1`,
-            [domain.subdomain_id]
-        );
-        const owner = owners[0] || {};
+    // const [subdomains] = await externalDb.execute('SELECT * FROM subdomain');
+    // for (const domain of subdomains) {
+    //     const [owners] = await externalDb.execute(
+    //         `SELECT company_name, company_type_id FROM members WHERE subdomain_id = ? AND is_primary = 1 LIMIT 1`,
+    //         [domain.subdomain_id]
+    //     );
+    //     const owner = owners[0] || {};
 
-        await prisma.subdomains.create({
-            data: {
-                id: domain.subdomain_id,
-                name: owner.company_name || domain.subdomain_name,
-                domain: domain.subdomain_name,
-                company_type_id: owner.company_type_id || null,
-                theme_config: domain.css_value ? JSON.stringify(domain.css_value) : null,
-                status: 'active',
-                regular_hours: domain.regular_hours || null,
-                week_start_day: domain.week_start_day || null,
-                created_at: domain.created_at || new Date(),
-                updated_at: domain.updated_at || new Date(),
-                deleted_at: domain.deleted_at || null,
-            },
-        });
-    }
+    //     await prisma.subdomains.create({
+    //         data: {
+    //             id: domain.subdomain_id,
+    //             name: owner.company_name || domain.subdomain_name,
+    //             domain: domain.subdomain_name,
+    //             company_type_id: owner.company_type_id || null,
+    //             theme_config: domain.css_value ? JSON.stringify(domain.css_value) : null,
+    //             status: 'active',
+    //             regular_hours: domain.regular_hours || null,
+    //             week_start_day: domain.week_start_day || null,
+    //             created_at: domain.created_at || new Date(),
+    //             updated_at: domain.updated_at || new Date(),
+    //             deleted_at: domain.deleted_at || null,
+    //         },
+    //     });
+    // }
 
     // ----- Seed Timezone ------
-    const allTimezones = moment.tz.names();
-    for (const tz of allTimezones) {
-        // Get UTC offset for this timezone
-        const offset = moment.tz(tz).format('Z'); // Example: "-06:00"
+    // const allTimezones = moment.tz.names();
+    // for (const tz of allTimezones) {
+    //     // Get UTC offset for this timezone
+    //     const offset = moment.tz(tz).format('Z'); // Example: "-06:00"
 
-        await prisma.timezones.create({
-            data: {
-                name: tz,                                   // e.g., "America/Chicago"
-                utc: `(GMT${offset}) ${tz}`,                // e.g., "(GMT-06:00) America/Chicago"
-                status: "active",
-                created_at: new Date(),
-                updated_at: new Date(),
-                deleted_at: null,
-            },
-        });
-    }
+    //     await prisma.timezones.create({
+    //         data: {
+    //             name: tz,                                   // e.g., "America/Chicago"
+    //             utc: `(GMT${offset}) ${tz}`,                // e.g., "(GMT-06:00) America/Chicago"
+    //             status: "active",
+    //             created_at: new Date(),
+    //             updated_at: new Date(),
+    //             deleted_at: null,
+    //         },
+    //     });
+    // }
 
 
     //	--- Seed members + employee + admin_user tables ----
@@ -151,7 +151,7 @@ async function main() {
                 pay_type: employee?.payment === 1 ? 'hourly' : employee?.payment === 2 ? 'flat_rate' : null,
                 position: employee?.position || null,
                 review_date: safeDate(member.review_date),
-                reimbursement: member.reimbursement || null,
+                reimbursement: employee?.reimbursment || null,
                 date_employed: safeDate(member.date_employed),
                 hire_date: safeDate(member.hire_date),
                 salary: employee?.salary || null,
@@ -206,55 +206,55 @@ async function main() {
         });
     }
 
-    // --- Seed Departments ---
-    const [departments] = await externalDb.execute(`SELECT * FROM departments`);
+    // // --- Seed Departments ---
+    // const [departments] = await externalDb.execute(`SELECT * FROM departments`);
 
-    for (const department of departments) {
-        // Get owner (subdomain_id) from external.members
-        const [ownerRows] = await externalDb.execute(
-            `SELECT subdomain_id FROM members WHERE member_id = ? LIMIT 1`,
-            [department.employer_id]
-        );
-        const owner = ownerRows[0];
+    // for (const department of departments) {
+    //     // Get owner (subdomain_id) from external.members
+    //     const [ownerRows] = await externalDb.execute(
+    //         `SELECT subdomain_id FROM members WHERE member_id = ? LIMIT 1`,
+    //         [department.employer_id]
+    //     );
+    //     const owner = ownerRows[0];
 
-        if (owner && owner.subdomain_id) {
-            await prisma.departments.create({
-                data: {
-                    id: department.department_id,
-                    subdomain_id: owner.subdomain_id || null,
-                    department_name: department.department_name,
-                    created_at: department.created_at || new Date(),
-                    updated_at: department.updated_at || new Date(),
-                    deleted_at: department.deleted_at || null,
-                },
-            });
-        }
-    }
+    //     if (owner && owner.subdomain_id) {
+    //         await prisma.departments.create({
+    //             data: {
+    //                 id: department.department_id,
+    //                 subdomain_id: owner.subdomain_id || null,
+    //                 department_name: department.department_name,
+    //                 created_at: department.created_at || new Date(),
+    //                 updated_at: department.updated_at || new Date(),
+    //                 deleted_at: department.deleted_at || null,
+    //             },
+    //         });
+    //     }
+    // }
 
-    // --- Seed Locations ---
-    const [locations] = await externalDb.execute(`SELECT * FROM locations`);
+    // // --- Seed Locations ---
+    // const [locations] = await externalDb.execute(`SELECT * FROM locations`);
 
-    for (const location of locations) {
-        // Get owner (subdomain_id) from external.members
-        const [ownerRows] = await externalDb.execute(
-            `SELECT subdomain_id FROM members WHERE member_id = ? LIMIT 1`,
-            [location.employer_id]
-        );
-        const owner = ownerRows[0];
+    // for (const location of locations) {
+    //     // Get owner (subdomain_id) from external.members
+    //     const [ownerRows] = await externalDb.execute(
+    //         `SELECT subdomain_id FROM members WHERE member_id = ? LIMIT 1`,
+    //         [location.employer_id]
+    //     );
+    //     const owner = ownerRows[0];
 
-        if (owner && owner.subdomain_id) {
-            await prisma.locations.create({
-                data: {
-                    id: location.location_id,
-                    subdomain_id: owner.subdomain_id,
-                    location_name: location.location_name,
-                    created_at: location.created_at || new Date(),
-                    updated_at: location.updated_at || new Date(),
-                    deleted_at: location.deleted_at || null,
-                },
-            });
-        }
-    }
+    //     if (owner && owner.subdomain_id) {
+    //         await prisma.locations.create({
+    //             data: {
+    //                 id: location.location_id,
+    //                 subdomain_id: owner.subdomain_id,
+    //                 location_name: location.location_name,
+    //                 created_at: location.created_at || new Date(),
+    //                 updated_at: location.updated_at || new Date(),
+    //                 deleted_at: location.deleted_at || null,
+    //             },
+    //         });
+    //     }
+    // }
 
     console.log('Seeding completed!');
 

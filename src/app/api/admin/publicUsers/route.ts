@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient, Prisma } from '@prisma/client';
 import bcrypt from "bcryptjs";
 import Stripe from 'stripe';
+import { format } from "date-fns";
 
 // Use the Stripe secret key (never use publishable key here)
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -12,8 +13,87 @@ const prisma = new PrismaClient();
 
 export async function GET(req: NextRequest) {
     const { searchParams } = req.nextUrl;
+    const id = searchParams.get("id");
+    const userType = searchParams.get("user_type"); // read from query
+    const userIdParam = searchParams.get("user_id"); // comes as string | null
+    const userId = userIdParam ? Number(userIdParam) : undefined;
     const subdomain = searchParams.get("subdomain");
+    // Fetch single user by ID
+    if (id) {
+        const user = await prisma.users.findUnique({
+            where: { id: Number(id) },
+            include: {
+                department: {
+                    select: {
+                        department_name: true
+                    }
+                },
+                state: {
+                    select: {
+                        name: true
+                    }
+                },
+                country: {
+                    select: {
+                        name: true
+                    }
+                },
+                subdomain: {
+                    select: {
+                        domain: true,
+                        name: true,
+                        regular_hours: true,
+                        week_start_day: true,
+                        company_type: {
+                            select: {
+                                id: true,
+                                name: true
+                            }
+                        },
+                    },
+                },
+                subscriptions: {
+                    select: {
+                        employee_limit: true,
+                    },
+                },
+            },
+        });
 
+        if (!user) {
+            return NextResponse.json({ error: "User not found" }, { status: 404 });
+        }
+
+        return NextResponse.json({
+            id: user.id,
+            firstName: user.first_name,
+            lastName: user.last_name,
+            email: user.email,
+            phone: user.phone_number,
+            status: user.status === "active" ? "Yes" : "No",
+            clientId: user.subdomain?.domain || "",
+            companyName: user.subdomain?.name || "",
+            companyTypeId: user.subdomain?.company_type?.id || "",
+            companyType: user.subdomain?.company_type?.name || "",
+            address: [
+                user.address,
+                user.address_2,
+                user.city,
+                user.state,
+                user.zip_code
+            ].filter(Boolean).join(', '),
+            dateEmployed: format(new Date(user.created_at), "MM/dd/yyyy"), // or your actual field 
+            department: user.department?.department_name || "",
+            payType: user.pay_type === "flat_rate" ? "Flat Rate" : "Hourly",
+            reimbursement: user.reimbursement ?? 0,
+            position: user.position ?? "",
+            isPrimary: user.user_type === "po_user" ? 1 : 0,
+            poUserId: user.user_type === "po_user" ? user.id : user.owner_id,
+            employeeLimit: user.subscriptions?.[0]?.employee_limit ?? 0,
+            regularHours: user.subdomain?.regular_hours || "",
+            weekStartDay: user.subdomain?.week_start_day || "",
+        });
+    }
     // subdomain check
     if (subdomain) {
         const existing = await prisma.subdomains.findUnique({
@@ -21,6 +101,26 @@ export async function GET(req: NextRequest) {
         });
         return NextResponse.json({ exists: !!existing });
     }
+
+    if (userType === "po_user" && userId) {
+        const poUsers = await prisma.users.findMany({
+            where: {
+                OR: [
+                    { status: "active", deleted_at: null, owner_id: userId }, // employees
+                    { id: userId } // include the owner themselves
+                ]
+            },
+            select: {
+                id: true,
+                first_name: true,
+                last_name: true,
+            },
+        });
+
+        return NextResponse.json({ poUsers });
+    }
+
+
 
     // Listing query
     const {

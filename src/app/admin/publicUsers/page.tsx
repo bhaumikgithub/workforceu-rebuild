@@ -13,7 +13,7 @@ import {
 import 'ag-grid-community/styles/ag-theme-alpine.css';
 import { useRouter } from 'next/navigation';
 import { Eye, Trash2 } from 'lucide-react';
-import Swal from 'sweetalert2';
+import { confirmAndDelete } from '@/utils/confirmAndDelete';
 
 // Register AG Grid community modules
 ModuleRegistry.registerModules([AllCommunityModule]);
@@ -49,34 +49,12 @@ export default function PublicUsersPage() {
             cellRenderer: (params: any) => {
                 const user = params.data as User;
 
-                const handleDelete = async () => {
-                    const result = await Swal.fire({
-                        title: `Are you sure you want to remove this user <b>${user.firstName}</b>?`,
-                        html: 'This action is not reversible.',
-                        icon: 'warning',
-                        showCancelButton: true,
-                        confirmButtonColor: '#dc2626',
-                        cancelButtonColor: '#6b7280',
-                        confirmButtonText: 'Yes, delete it!',
-                        cancelButtonText: 'Cancel',
-                        customClass: {
-                            title: 'swal2-title-sm', // custom class for title
-                        },
+                const handleDelete = () => {
+                    confirmAndDelete({
+                        url: `/api/admin/publicUsers?id=${user.id}`,
+                        name: user.firstName,
+                        onSuccess: () => params.api.applyTransaction({ remove: [user] }),
                     });
-
-                    if (result.isConfirmed) {
-                        try {
-                            await axios.delete(`/api/admin/publicUsers?id=${user.id}`);
-
-                            // Refresh datasource OR remove row directly
-                            params.api.applyServerSideTransaction({ remove: [user] });
-
-                            Swal.fire('Deleted!', 'The user has been removed.', 'success');
-                        } catch (err) {
-                            console.error('Delete failed:', err);
-                            Swal.fire('Error!', 'Failed to delete user.', 'error');
-                        }
-                    }
                 };
 
                 return (

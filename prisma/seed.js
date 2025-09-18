@@ -1,10 +1,10 @@
-//import { main as masterUserSeeder } from "./masterAndUserTablesSeeder.js";
+import { main as masterUserSeeder } from "./masterAndUserTablesSeeder.js";
 import { main as subscriptionSeeder } from "./subscriptionSeeder.js";
 
 async function run() {
     console.log("🌱 Starting seeding...");
 
-    //await masterUserSeeder();
+    await masterUserSeeder();
     await subscriptionSeeder();
 
     console.log("🌱 All seeds completed successfully");

@@ -70,7 +70,9 @@ export async function GET(req: NextRequest) {
             lastName: user.last_name,
             email: user.email,
             phone: user.phone_number,
+            userStatus: user.status,
             status: user.status === "active" ? "Yes" : "No",
+            subdomainId: user.subdomain_id,
             clientId: user.subdomain?.domain || "",
             companyName: user.subdomain?.name || "",
             companyTypeId: user.subdomain?.company_type?.id || "",
@@ -126,7 +128,7 @@ export async function GET(req: NextRequest) {
     const {
         search = '',
         page = '1',
-        pageSize = '50',
+        pageSize = '20',
         sortField = 'first_name',
         sortOrder = 'asc'
     } = Object.fromEntries(req.nextUrl.searchParams);
@@ -362,6 +364,129 @@ export async function POST(req: Request) {
     } catch (err: any) {
         console.error(err);
         return NextResponse.json({ message: err.message || 'Failed to create user' }, { status: 500 });
+    }
+}
+
+export async function PUT(req: NextRequest) {
+    try {
+        const body = await req.json();
+        const { action } = body;
+
+        let result;
+
+        switch (action) {
+            case "updateCompanyType": {
+                const { subdomain_id, companyTypeId } = body;
+                result = await prisma.subdomains.update({
+                    where: { id: Number(subdomain_id) },
+                    data: { company_type_id: Number(companyTypeId) },
+                });
+                break;
+            }
+
+            // case "updatePoUser": {
+            //     const { userId, poUserId } = body;
+            //     result = await prisma.users.update({
+            //         where: { id: Number(userId) },
+            //         data: { owner_id: Number(poUserId) },
+            //     });
+            //     break;
+            // }
+
+            case "updateEmployeeLimit": {
+                const { userId, employeeLimit } = body;
+                // Update subscription
+                await prisma.subscription.updateMany({
+                    where: { user_id: Number(userId) },
+                    data: { employee_limit: String(employeeLimit) },
+                });
+                break;
+            }
+
+            case "updateHoursDaySetting": {
+                const { subdomain_id, hoursPerDay, weekStartDay } = body;
+                result = await prisma.subdomains.update({
+                    where: { id: Number(subdomain_id) },
+                    data: {
+                        regular_hours: Number(hoursPerDay),
+                        week_start_day: weekStartDay,
+                    },
+                });
+                break;
+            }
+
+            case "updateUserBan": {
+                const { userId } = body;
+                result = await prisma.users.update({
+                    where: { id: Number(userId) },
+                    data: {
+                        status: "ban",
+                    },
+                });
+                break;
+            }
+
+            case "updateUserUnban": {
+                const { userId } = body;
+                result = await prisma.users.update({
+                    where: { id: Number(userId) },
+                    data: {
+                        status: "active",
+                    },
+                });
+                break;
+            }
+
+            // Subscribe: PO user + SO users
+            case "subscribeUser": {
+                const { userId } = body;
+
+                // Update PO user
+                await prisma.users.update({
+                    where: { id: Number(userId) },
+                    data: { status: "active" },
+                });
+
+                // Update SO users linked to this PO user
+                await prisma.users.updateMany({
+                    where: { owner_id: Number(userId) },
+                    data: { status: "active" },
+                });
+                break;
+            }
+
+            // Unsubscribe: PO user + SO users
+            case "unsubscribeUser": {
+                const { userId } = body;
+
+                // Update PO user
+                await prisma.users.update({
+                    where: { id: Number(userId) },
+                    data: { status: "ban" },
+                });
+
+                // Update SO users linked to this PO user
+                await prisma.users.updateMany({
+                    where: { owner_id: Number(userId) },
+                    data: { status: "ban" },
+                });
+                break;
+            }
+
+            default:
+                return NextResponse.json(
+                    { success: false, error: "Invalid action" },
+                    { status: 400 }
+                );
+        }
+
+        return NextResponse.json({ success: true, data: result });
+    } catch (err: any) {
+        console.error("Update failed:", err);
+        return NextResponse.json(
+            { success: false, error: err.message },
+            { status: 500 }
+        );
     }
 }
 

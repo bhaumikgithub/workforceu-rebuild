@@ -110,11 +110,11 @@ export default function PublicUsersPage() {
     const onGridReady = (params: GridReadyEvent<User>) => {
         setGridApi(params.api);
 
-        // ✅ attach datasource once on init
+        // attach datasource once on init
         (params.api as any).setGridOption('datasource', datasource());
     };
 
-    // ✅ when search changes, reset datasource completely
+    // when search changes, reset datasource completely
     useEffect(() => {
         if (gridApi) {
             gridApi.setGridOption('datasource', datasource());
@@ -145,12 +145,12 @@ export default function PublicUsersPage() {
                 <AgGridReact<User>
                     columnDefs={columns}
                     rowModelType="infinite"
-                    cacheBlockSize={50}
+                    cacheBlockSize={20}
                     maxBlocksInCache={1}
                     rowBuffer={0}
                     maxConcurrentDatasourceRequests={1}
                     pagination={true}
-                    paginationPageSize={50}
+                    paginationPageSize={20}
                     onGridReady={onGridReady}
                     domLayout="autoHeight"
                 />

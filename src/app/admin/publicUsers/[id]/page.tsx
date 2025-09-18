@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import axios from "axios";
 import { confirmAndDelete } from '@/utils/confirmAndDelete';
+import toast from "react-hot-toast";
 
 interface CompanyType { id: number; name: string; }
 interface PoUser { id: number; first_name: string; last_name: string; }
@@ -28,6 +29,8 @@ interface User {
     employeeLimit?: number;
     regularHours?: number;
     weekStartDay?: number;
+    subdomainId: number;
+    userStatus: string;
 }
 
 export default function ViewAccount() {
@@ -42,6 +45,8 @@ export default function ViewAccount() {
     const [regularHours, setRegularHours] = useState<number>(40);
     const [weekStartDay, setWeekStartDay] = useState<number>(0);
     const weekDays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    const [employeeLimit, setEmployeeLimit] = useState("");
+    const [userStatus, setUserStatus] = useState("");
 
     useEffect(() => {
         const fetchUser = async () => {
@@ -51,6 +56,8 @@ export default function ViewAccount() {
                 setUser(u);
                 setSelectedCompanyType(u.companyTypeId || null);
                 setSelectedPoUser(u.poUserId || null);
+                setEmployeeLimit(u.employeeLimit?.toString() || "");
+                setUserStatus(u.userStatus);
 
                 if (u.isPrimary) {
                     const [masterRes, poUsersRes] = await Promise.all([
@@ -73,29 +80,120 @@ export default function ViewAccount() {
 
     const handleUpdateCompanyType = async () => {
         try {
-            await axios.post(`/api/admin/publicUsers/${user.id}/updateBusinessType`, { companyTypeId: selectedCompanyType });
-            alert("Business Type Updated");
+            await axios.put("/api/admin/publicUsers", {
+                action: "updateCompanyType",
+                subdomain_id: user.subdomainId,
+                companyTypeId: selectedCompanyType,
+            });
+            toast.success("Business Type Updated");
         } catch (err) {
             console.error(err);
-            alert("Failed to update");
+            toast.error("Failed to update Company Type");
         }
     };
 
     const handleUpdatePoUser = async () => {
         try {
-            await axios.post(`/api/admin/publicUsers/${user.id}/updatePoUser`, { poUserId: selectedPoUser });
-            alert("PO User Updated");
+            await axios.put("/api/admin/publicUsers", {
+                action: "updatePoUser",
+                userId: user.id,
+                poUserId: selectedPoUser,
+            });
+            toast.success("PO User Updated");
         } catch (err) {
             console.error(err);
-            alert("Failed to update");
+            toast.error("Failed to update PO user");
         }
     };
+
+    const handleUpdateEmployeeLimt = async () => {
+        try {
+            await axios.put("/api/admin/publicUsers", {
+                action: "updateEmployeeLimit",
+                userId: user.id,
+                employeeLimit: Number(employeeLimit),
+            });
+            toast.success("Employee limit updated successfully!");
+        } catch (err) {
+            console.error(err);
+            toast.error("Failed to update employee limit");
+        }
+    }
+
+    const handleUpdateHoursDaySetting = async () => {
+        try {
+            await axios.put("/api/admin/publicUsers", {
+                action: "updateHoursDaySetting",
+                subdomain_id: user.subdomainId,
+                hoursPerDay: regularHours,
+                weekStartDay: weekStartDay,
+            });
+            toast.success("Work Settings has been updated");
+        } catch (err) {
+            console.error(err);
+            toast.error("Failed to update work settings");
+        }
+
+    }
+
+    const handleBanToggle = async () => {
+        try {
+            const action = userStatus === "active" ? "updateUserBan" : "updateUserUnban";
+
+            const res = await axios.put("/api/admin/publicUsers", {
+                action,
+                userId: user.id,
+            });
+
+            if (res.data.success) {
+                const newStatus = userStatus === "active" ? "ban" : "active";
+                setUserStatus(newStatus);
+                toast.success(
+                    newStatus === "ban" ? "User has been banned" : "User has been unbanned"
+                );
+            } else {
+                toast.error(res.data.error || "Failed to update user");
+            }
+        } catch (err) {
+            console.error(err);
+            toast.error("Failed to update user settings");
+        }
+    };
+
+    // Subscribe / Unsubscribe → PO + SO users
+    const handleSubscriptionToggle = async () => {
+        try {
+            const action = userStatus === "active" ? "unsubscribeUser" : "subscribeUser";
+
+            const res = await axios.put("/api/admin/publicUsers", {
+                action,
+                userId: user.id,
+            });
+
+            if (res.data.success) {
+                const newStatus = userStatus === "active" ? "ban" : "active";
+                setUserStatus(newStatus);
+
+                toast.success(
+                    newStatus === "active"
+                        ? "PO and SO users subscribed (active)"
+                        : "PO and SO users unsubscribed (banned)"
+                );
+            }
+        } catch (err) {
+            console.error(err);
+            toast.error("Failed to update subscription");
+        }
+    };
+
 
     const handleCancel = () => router.push('/admin/publicUsers');
     const handleDelete = () => {
         confirmAndDelete({
             url: `/api/admin/publicUsers?id=${user.id}`,
             name: user.firstName,
+            redirectTo: '/admin/publicUsers',
+            router,
         });
     };
 
@@ -177,17 +275,17 @@ export default function ViewAccount() {
                             <div className="flex items-center gap-2">
                                 <label className="w-32 text-gray-500">Employee Limit:</label>
                                 <input
-                                    type="number"
-                                    value={user.employeeLimit || ""}
-                                    onChange={(e) => { }}
-                                    className="border rounded p-2 w-32"
+                                    type="text"
+                                    value={employeeLimit}
+                                    onChange={(e) => setEmployeeLimit(e.target.value)}
+                                    className="border rounded p-2 flex-1"
                                 />
-                                <button className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition">Update Limit</button>
+                                <button onClick={handleUpdateEmployeeLimt} className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition">Update Limit</button>
                             </div>
 
                             {/* Working Hours & Week Start */}
                             <div className="flex items-center gap-2">
-                                <label className="w-32 text-gray-500">Working Hours & Week Start Day</label>
+                                <label className="w-32 text-gray-500">Working hours & Overtime Management</label>
                                 <div className="flex gap-2">
                                     <input
                                         type="text"
@@ -206,7 +304,7 @@ export default function ViewAccount() {
                                             </option>
                                         ))}
                                     </select>
-                                    <button className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition">
+                                    <button onClick={handleUpdateHoursDaySetting} className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition">
                                         Update
                                     </button>
                                 </div>
@@ -253,15 +351,40 @@ export default function ViewAccount() {
             <div className="mt-6 flex flex-wrap gap-3">
                 {user.isPrimary ? (
                     <>
-                        <button className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition">Subscribe</button>
-                        <button className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition">Ban</button>
+                        <div className="flex gap-2">
+                            {userStatus == "active" ? (
+                                <>
+                                    <button onClick={handleSubscriptionToggle} className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition" >
+                                        Subscribe
+                                    </button>
+                                    <button onClick={handleBanToggle} className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition">
+                                        Ban
+                                    </button>
+                                </>
+                            ) : userStatus == "ban" ? (
+                                <>
+                                    <button onClick={handleSubscriptionToggle} className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition">
+                                        Unsubscribe
+                                    </button>
+                                    <button onClick={handleBanToggle} className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition">
+                                        Unban
+                                    </button>
+                                </>
+                            ) : null}
+                        </div>
                         <button className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition">Edit</button>
                         <button onClick={handleCancel} className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-600 transition">Back</button>
                         <button onClick={handleDelete} className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-600 transition">Delete</button>
                     </>
                 ) : (
                     <>
-                        <button className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition">Un-Ban</button>
+                        <div className="flex gap-2">
+                            {userStatus == "active" ? (
+                                <button onClick={handleBanToggle} className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition">Ban</button>
+                            ) : <button onClick={handleBanToggle} className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition">
+                                Unban
+                            </button>}
+                        </div>
                         <button className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition">Edit</button>
                         <button onClick={handleCancel} className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition">Back</button>
                         <button onClick={handleDelete} className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-600 transition">Delete</button>
@@ -269,6 +392,6 @@ export default function ViewAccount() {
                 )}
             </div>
 
-        </div>
+        </div >
     );
 }

@@ -1,24 +1,20 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { jwtDecode } from "jwt-decode";
 
-interface JWTPayload {
-  id: string;
+export interface User {
+  id: number;
   email: string;
-  exp: number;
-}
-
-interface User {
-  id: string;
-  email: string;
+  name?: string;
+  subdomain_id?: number;
+  // add other properties as needed
 }
 
 interface AuthContextType {
   user: User | null;
   token: string | null;
-  login: (token: string) => void;
+  login: (user: User, token: string) => void;
   logout: () => void;
   loading: boolean;
 }
@@ -26,46 +22,61 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const router = useRouter();
 
+  // Hydrate user/token from localStorage
   useEffect(() => {
-    const storedToken = localStorage.getItem("token");
-    if (storedToken) {
-      try {
-        const decoded = jwtDecode<JWTPayload>(storedToken);
-        if (decoded.exp * 1000 > Date.now()) {
-          setToken(storedToken);
-          setUser({ id: decoded.id, email: decoded.email });
-        } else {
-          localStorage.removeItem("token");
+    try {
+      const sUser = localStorage.getItem("user");
+      const sToken = localStorage.getItem("token");
+
+      if (sUser && sToken) {
+        setUser(JSON.parse(sUser));
+        setToken(sToken);
+
+        // Optional: check token expiration if JWT contains exp
+        const payload = JSON.parse(atob(sToken.split(".")[1]));
+        if (payload.exp * 1000 < Date.now()) {
+          // token expired
+          logout();
         }
-      } catch {
-        localStorage.removeItem("token");
       }
+    } catch (e) {
+      console.error("Auth hydrate failed", e);
+      localStorage.removeItem("user");
+      localStorage.removeItem("token");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, []);
 
-  const login = (newToken: string) => {
-    localStorage.setItem("token", newToken);
+  const login = (newUser: User, newToken: string) => {
+    setUser(newUser);
     setToken(newToken);
-    try {
-      const decoded = jwtDecode<JWTPayload>(newToken);
-      setUser({ id: decoded.id, email: decoded.email });
-    } catch {
-      setUser(null);
-    }
+    localStorage.setItem("user", JSON.stringify(newUser));
+    localStorage.setItem("token", newToken);
   };
 
   const logout = () => {
-    localStorage.removeItem("token");
     setUser(null);
     setToken(null);
+    localStorage.removeItem("user");
+    localStorage.removeItem("token");
     router.push("/login");
   };
+
+  // Sync across tabs
+  useEffect(() => {
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === "user") setUser(e.newValue ? JSON.parse(e.newValue) : null);
+      if (e.key === "token") setToken(e.newValue);
+    };
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, []);
 
   return (
     <AuthContext.Provider value={{ user, token, login, logout, loading }}>
@@ -75,7 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 }
 
 export function useAuth() {
-  const context = useContext(AuthContext);
-  if (!context) throw new Error("useAuth must be used inside AuthProvider");
-  return context;
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be used inside AuthProvider");
+  return ctx;
 }

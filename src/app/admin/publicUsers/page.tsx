@@ -4,112 +4,157 @@ import { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
 import { AgGridReact } from 'ag-grid-react';
 import {
-  ColDef,
-  GridReadyEvent,
-  IGetRowsParams,
-  ModuleRegistry,
-  AllCommunityModule,
+    ColDef,
+    GridReadyEvent,
+    IGetRowsParams,
+    ModuleRegistry,
+    AllCommunityModule,
 } from 'ag-grid-community';
 import 'ag-grid-community/styles/ag-theme-alpine.css';
+import { useRouter } from 'next/navigation';
+import { Eye, Trash2 } from 'lucide-react';
+import { confirmAndDelete } from '@/utils/confirmAndDelete';
 
 // Register AG Grid community modules
 ModuleRegistry.registerModules([AllCommunityModule]);
 
 interface User {
-  id: number;
-  firstName: string;
-  lastName: string;
-  email: string;
-  userType: string;
-  status: string;
-  clientId: string;
-  companyType: string;
-  businessType: string;
+    id: number;
+    firstName: string;
+    lastName: string;
+    email: string;
+    userType: string;
+    status: string;
+    clientId: string;
+    companyType: string;
+    businessType: string;
 }
 
 export default function PublicUsersPage() {
-  const [gridApi, setGridApi] = useState<any>(null);
-  const [search, setSearch] = useState('');
+    const [gridApi, setGridApi] = useState<any>(null);
+    const [search, setSearch] = useState('');
+    const router = useRouter();
 
-  const columns: ColDef<User>[] = [
-    { headerName: 'First Name', field: 'firstName', sortable: true, filter: true },
-    { headerName: 'Last Name', field: 'lastName', sortable: true, filter: true },
-    { headerName: 'Company Type', field: 'companyType', sortable: true, filter: true },
-    { headerName: 'Business Type', field: 'businessType', sortable: true, filter: true },
-    { headerName: 'Client ID', field: 'clientId', sortable: true, filter: true },
-    { headerName: 'Email', field: 'email', sortable: true, filter: true },
-    { headerName: 'User Type', field: 'userType', sortable: true, filter: true },
-    { headerName: 'Status', field: 'status', sortable: true, filter: true },
-  ];
+    const columns: ColDef<User>[] = [
+        { headerName: 'First Name', field: 'firstName', sortable: true, filter: true },
+        { headerName: 'Last Name', field: 'lastName', sortable: true, filter: true },
+        { headerName: 'Company Type', field: 'companyType', sortable: true, filter: true },
+        { headerName: 'Business Type', field: 'businessType', sortable: true, filter: true },
+        { headerName: 'Client ID', field: 'clientId', sortable: true, filter: true },
+        { headerName: 'Email', field: 'email', sortable: true, filter: true },
+        { headerName: 'User Type', field: 'userType', sortable: true, filter: true },
+        { headerName: 'Status', field: 'status', sortable: true, filter: true },
+        {
+            headerName: 'Actions',
+            cellRenderer: (params: any) => {
+                const user = params.data as User;
 
-  // datasource for infinite scrolling
-  const datasource = useCallback(
-    () => ({
-      getRows: async (params: IGetRowsParams) => {
-        try {
-          const pageSize = params.endRow - params.startRow;
-          const page = Math.floor(params.startRow / pageSize) + 1;
+                const handleDelete = () => {
+                    confirmAndDelete({
+                        url: `/api/admin/publicUsers?id=${user.id}`,
+                        name: user.firstName,
+                        onSuccess: () => params.api.applyTransaction({ remove: [user] }),
+                    });
+                };
 
-          const sortField = params.sortModel?.[0]?.colId || 'firstName';
-          const sortOrder = params.sortModel?.[0]?.sort || 'asc';
-
-          const res = await axios.get('/api/admin/publicUsers', {
-            params: { page, pageSize, search, sortField, sortOrder },
-          });
-
-          params.successCallback(res.data.data, res.data.total);
-        } catch (err) {
-          console.error('Error fetching rows:', err);
-          params.failCallback();
+                return (
+                    <div className="flex gap-2">
+                        <button
+                            className="text-blue-600 hover:text-blue-800"
+                            onClick={() => router.push(`/admin/publicUsers/${user.id}`)}
+                        >
+                            <Eye size={18} />
+                        </button>
+                        <button
+                            className="text-red-600 hover:text-red-800"
+                            onClick={handleDelete}
+                        >
+                            <Trash2 size={18} />
+                        </button>
+                    </div>
+                );
+            },
+            sortable: false,
+            filter: false,
+            width: 120,
         }
-      },
-    }),
-    [search]
-  );
+    ];
 
-  const onGridReady = (params: GridReadyEvent<User>) => {
-    setGridApi(params.api);
+    // datasource for infinite scrolling
+    const datasource = useCallback(
+        () => ({
+            getRows: async (params: IGetRowsParams) => {
+                try {
+                    const pageSize = params.endRow - params.startRow;
+                    const page = Math.floor(params.startRow / pageSize) + 1;
 
-    // set datasource initially
-    (params.api as any).setGridOption('datasource', datasource());
+                    const sortField = params.sortModel?.[0]?.colId || 'firstName';
+                    const sortOrder = params.sortModel?.[0]?.sort || 'asc';
 
-    // default sort
-    (params.api as any).setSortModel([{ colId: 'firstName', sort: 'asc' }]);
-  };
+                    console.log('Fetching rows:', { page, pageSize, search, sortField, sortOrder });
 
-  // when search changes, re-attach datasource and reset to page 1
-  useEffect(() => {
-    if (gridApi) {
-      (gridApi as any).setGridOption('datasource', datasource());
-      gridApi.refreshInfiniteCache();
-    }
-  }, [search, datasource, gridApi]);
+                    const res = await axios.get('/api/admin/publicUsers', {
+                        params: { page, pageSize, search, sortField, sortOrder },
+                    });
 
-  return (
-    <div className="p-6">
-      <h1 className="text-xl font-bold mb-4">Public Users</h1>
+                    params.successCallback(res.data.data, res.data.total);
+                } catch (err) {
+                    console.error('Error fetching rows:', err);
+                    params.failCallback();
+                }
+            },
+        }),
+        [search]
+    );
 
-      <div className="mb-4 flex gap-2">
-        <input
-          type="text"
-          placeholder="Search by name or email..."
-          className="border px-2 py-1 rounded flex-1"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-      </div>
+    const onGridReady = (params: GridReadyEvent<User>) => {
+        setGridApi(params.api);
 
-      <div className="ag-theme-alpine" style={{ width: '100%', height: 600 }}>
-        <AgGridReact<User>
-          columnDefs={columns}
-          rowModelType="infinite"
-          cacheBlockSize={50}
-          pagination={true}
-          paginationPageSize={50}
-          onGridReady={onGridReady}
-          domLayout="autoHeight"
-        />
-      </div>
-    </div>
-  );
+        // attach datasource once on init
+        (params.api as any).setGridOption('datasource', datasource());
+    };
+
+    // when search changes, reset datasource completely
+    useEffect(() => {
+        if (gridApi) {
+            gridApi.setGridOption('datasource', datasource());
+        }
+    }, [search, datasource, gridApi]);
+
+    return (
+        <div className="p-6">
+            <h1 className="text-xl font-bold mb-4">Public Users</h1>
+
+            <div className="mb-4 flex gap-2">
+                <input
+                    type="text"
+                    placeholder="Search"
+                    className="border px-2 py-1 rounded flex-1"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                />
+                <button
+                    className="bg-emerald-500 text-white px-4 py-2 rounded hover:bg-emerald-600"
+                    onClick={() => router.push('/admin/publicUsers/create')}
+                >
+                    Add New
+                </button>
+            </div>
+
+            <div className="ag-theme-alpine" style={{ width: '100%', height: 600 }}>
+                <AgGridReact<User>
+                    columnDefs={columns}
+                    rowModelType="infinite"
+                    cacheBlockSize={20}
+                    maxBlocksInCache={1}
+                    rowBuffer={0}
+                    maxConcurrentDatasourceRequests={1}
+                    pagination={true}
+                    paginationPageSize={20}
+                    onGridReady={onGridReady}
+                    domLayout="autoHeight"
+                />
+            </div>
+        </div>
+    );
 }

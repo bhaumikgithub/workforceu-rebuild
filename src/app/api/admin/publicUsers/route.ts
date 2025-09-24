@@ -1,15 +1,136 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient,Prisma  } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
+import bcrypt from "bcryptjs";
+import Stripe from 'stripe';
+import { format } from "date-fns";
+
+// Use the Stripe secret key (never use publishable key here)
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+    apiVersion: "2023-10-16" as Stripe.LatestApiVersion,
+});
 
 const prisma = new PrismaClient();
 
 export async function GET(req: NextRequest) {
-    const { 
-        search = '', 
-        page = '1', 
-        pageSize = '50', 
-        sortField = 'first_name', 
-        sortOrder = 'asc' 
+    const { searchParams } = req.nextUrl;
+    const id = searchParams.get("id");
+    const userType = searchParams.get("user_type"); // read from query
+    const userIdParam = searchParams.get("user_id"); // comes as string | null
+    const userId = userIdParam ? Number(userIdParam) : undefined;
+    const subdomain = searchParams.get("subdomain");
+    // Fetch single user by ID
+    if (id) {
+        const user = await prisma.users.findUnique({
+            where: { id: Number(id) },
+            include: {
+                department: {
+                    select: {
+                        department_name: true
+                    }
+                },
+                state: {
+                    select: {
+                        name: true
+                    }
+                },
+                country: {
+                    select: {
+                        name: true
+                    }
+                },
+                subdomain: {
+                    select: {
+                        domain: true,
+                        name: true,
+                        regular_hours: true,
+                        week_start_day: true,
+                        company_type: {
+                            select: {
+                                id: true,
+                                name: true
+                            }
+                        },
+                    },
+                },
+                subscriptions: {
+                    select: {
+                        employee_limit: true,
+                    },
+                },
+            },
+        });
+
+        if (!user) {
+            return NextResponse.json({ error: "User not found" }, { status: 404 });
+        }
+
+        return NextResponse.json({
+            id: user.id,
+            firstName: user.first_name,
+            lastName: user.last_name,
+            email: user.email,
+            phone: user.phone_number,
+            userStatus: user.status,
+            status: user.status === "active" ? "Yes" : "No",
+            subdomainId: user.subdomain_id,
+            clientId: user.subdomain?.domain || "",
+            companyName: user.subdomain?.name || "",
+            companyTypeId: user.subdomain?.company_type?.id || "",
+            companyType: user.subdomain?.company_type?.name || "",
+            address: [
+                user.address,
+                user.address_2,
+                user.city,
+                user.state,
+                user.zip_code
+            ].filter(Boolean).join(', '),
+            dateEmployed: format(new Date(user.created_at), "MM/dd/yyyy"), // or your actual field 
+            department: user.department?.department_name || "",
+            payType: user.pay_type === "flat_rate" ? "Flat Rate" : "Hourly",
+            reimbursement: user.reimbursement ?? 0,
+            position: user.position ?? "",
+            isPrimary: user.user_type === "po_user" ? 1 : 0,
+            poUserId: user.user_type === "po_user" ? user.id : user.owner_id,
+            employeeLimit: user.subscriptions?.[0]?.employee_limit ?? 0,
+            regularHours: user.subdomain?.regular_hours || "",
+            weekStartDay: user.subdomain?.week_start_day || "",
+        });
+    }
+    // subdomain check
+    if (subdomain) {
+        const existing = await prisma.subdomains.findUnique({
+            where: { domain: subdomain, deleted_at: null },
+        });
+        return NextResponse.json({ exists: !!existing });
+    }
+
+    if (userType === "po_user" && userId) {
+        const poUsers = await prisma.users.findMany({
+            where: {
+                OR: [
+                    { status: "active", deleted_at: null, owner_id: userId }, // employees
+                    { id: userId } // include the owner themselves
+                ]
+            },
+            select: {
+                id: true,
+                first_name: true,
+                last_name: true,
+            },
+        });
+
+        return NextResponse.json({ poUsers });
+    }
+
+
+
+    // Listing query
+    const {
+        search = '',
+        page = '1',
+        pageSize = '20',
+        sortField = 'first_name',
+        sortOrder = 'asc'
     } = Object.fromEntries(req.nextUrl.searchParams);
 
     const skip = (parseInt(page) - 1) * parseInt(pageSize);
@@ -21,13 +142,13 @@ export async function GET(req: NextRequest) {
         'email',
         'user_type',
         'status',
-        ];
+    ];
     let orderBy: Prisma.usersOrderByWithRelationInput;
 
-   if (sortableFields.includes(sortField as keyof Prisma.usersOrderByWithRelationInput)) {
-        orderBy = { [sortField]: sortOrder as Prisma.SortOrder };
+    if (sortableFields.includes(sortField as keyof Prisma.usersOrderByWithRelationInput)) {
+        orderBy = { [sortField]: sortOrder as Prisma.usersOrderByWithRelationInput };
     } else {
-        orderBy = { first_name: 'asc' }; // 👈 fallback to first_name asc
+        orderBy = { first_name: 'asc' }; // fallback to first_name asc
     }
 
     // Build filter
@@ -37,9 +158,9 @@ export async function GET(req: NextRequest) {
 
     if (search) {
         whereFilter.OR = [
-        { first_name: { contains: search } },
-        { last_name: { contains: search } },
-        { email: { contains: search } },
+            { first_name: { contains: search } },
+            { last_name: { contains: search } },
+            { email: { contains: search } },
         ];
     }
 
@@ -53,19 +174,23 @@ export async function GET(req: NextRequest) {
         skip,
         take,
         select: {
-        id: true,
-        first_name: true,
-        last_name: true,
-        email: true,
-        user_type: true,
-        status: true,
-        subdomain: {
-            select: {
-            domain: true,
-            name: true,
-            company_type: { select: { name: true } },
+            id: true,
+            first_name: true,
+            last_name: true,
+            email: true,
+            user_type: true,
+            status: true,
+            subdomain: {
+                select: {
+                    domain: true,
+                    name: true,
+                    company_type: {
+                        select: {
+                            name: true
+                        }
+                    },
+                },
             },
-        },
         },
     });
 
@@ -83,4 +208,335 @@ export async function GET(req: NextRequest) {
     }));
 
     return NextResponse.json({ data, total, page: parseInt(page) });
+}
+
+export async function POST(req: Request) {
+    try {
+        const data = await req.json();
+
+        // 1️. Create Tenant
+        const tenant = await prisma.subdomains.create({
+            data: {
+                name: data.company_name,
+                domain: data.subdomain_value,
+                company_type_id: Number(data.company_type_id),
+                regular_hours: Number(data.regular_hours),
+                week_start_day: Number(data.week_start_day),
+                status: 'active',
+            },
+        });
+
+        // 2️. Create Location
+        const location = await prisma.locations.create({
+            data: {
+                location_name: data.location_name,
+                subdomain_id: tenant.id,
+                status: 'active',
+            },
+        });
+
+        // 3️. Create User
+        const hashedPassword = await bcrypt.hash(data.password, 10);
+        const user = await prisma.users.create({
+            data: {
+                first_name: data.first_name,
+                last_name: data.last_name,
+                email: data.email,
+                phone_number: data.phone,
+                mobile: data.mobile,
+                fax: data.fax,
+                subdomain_id: tenant.id,
+                password: hashedPassword,
+                original_password: data.password,
+                account_type: 1,
+                time_zone_id: Number(data.timezone),
+                location_id: location.id,
+                country_id: Number(data.country_id),
+                state_id: Number(data.state_id),
+                city: data.city,
+                address: data.address,
+                zip_code: data.pincode,
+                user_type: 'po_user',
+            },
+        });
+
+        // 3.1 Assign default permissions for PO user
+        const defaultPermissions = [
+            60, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 25, 24, 27, 28, 29, 30, 31, 32, 33,
+            34, 35, 36, 37, 61, 38, 39, 40, 41, 26, 59, 43, 44, 42, 47, 46, 48, 49, 50, 45,
+            52, 53, 54, 51, 55, 56, 57, 58, 59, 61, 62, 63, 64, 65, 66,
+        ];
+
+        // 3.2 Get all permission_type IDs that actually exist in DB
+        const existingPermissionTypes = await prisma.permission_types.findMany({
+            where: { id: { in: defaultPermissions } },
+            select: { id: true },
+        });
+        const existingIds = existingPermissionTypes.map(p => p.id);
+
+        //3.3 Calculate missing IDs
+        const missingIds = defaultPermissions.filter(id => !existingIds.includes(id));
+
+        console.log("Missing permission_type_ids:", missingIds);
+
+        // 3) Insert only existing IDs
+        if (existingIds.length > 0) {
+            await prisma.user_permissions.createMany({
+                data: existingIds.map(permissionId => ({
+                    user_id: user.id,
+                    owner_id: user.id,
+                    permission_type_id: permissionId,
+                    is_add: true,
+                    is_edit: true,
+                    is_view: true,
+                    is_remove: true,
+                })),
+            });
+        }
+        // 4️. Handle Stripe subscription
+        if (data.payment_type === 'CC') {
+            if (!data.paymentMethod) {
+                return NextResponse.json({ message: 'Payment method required' }, { status: 400 });
+            }
+
+            // Create Stripe customer
+            const customer = await stripe.customers.create({
+                email: user.email ?? undefined,
+                name: `${user.first_name ?? ''} ${user.last_name ?? ''}`.trim(),
+            });
+
+            // Attach payment method & set default
+            await stripe.paymentMethods.attach(data.paymentMethod, { customer: customer.id });
+            await stripe.customers.update(customer.id, {
+                invoice_settings: { default_payment_method: data.paymentMethod },
+            });
+
+            // Create subscription with expand to get payment intent
+            const subscription = await stripe.subscriptions.create({
+                customer: customer.id,
+                items: [{ price: data.subscription_plan }],
+                expand: ['latest_invoice.payment_intent.payment_method'],
+                discounts: data.coupon ? [{ coupon: data.coupon }] : undefined,
+            });
+            const currentPeriodStart = subscription.items.data[0].current_period_start;
+            const currentPeriodEnd = subscription.items.data[0].current_period_end;
+
+            const subscriptionStartDate = currentPeriodStart
+                ? new Date(currentPeriodStart * 1000)
+                : new Date();
+
+            const subscriptionEndDate = currentPeriodEnd
+                ? new Date(currentPeriodEnd * 1000)
+                : null;
+
+            // Plan info
+            const plan = subscription.items.data[0].plan;
+
+            // Or when retrieving a Plan directly
+            const planObject = await stripe.plans.retrieve(data.subscription_plan, {
+                expand: ['product'], // Expand the product object associated with the plan
+            });
+
+            const planName = planObject.nickname ?? (planObject.product as any)?.name ?? null;
+
+            const interval = plan.interval;
+            const planAmountInDollars = subscription.items.data[0].plan.amount! / 100;
+
+            // Payment intent & card
+            const invoice = subscription.latest_invoice as Stripe.Invoice & {
+                payment_intent?: Stripe.PaymentIntent & { payment_method?: Stripe.PaymentMethod };
+            };
+            const paymentIntent = invoice?.payment_intent;
+            const card = paymentIntent?.payment_method as Stripe.PaymentMethod | undefined;
+
+            // Last payment attempted date
+            const lastPaymentAttemptedDate = paymentIntent
+                ? new Date(paymentIntent.created * 1000)
+                : null;
+
+            // Save subscription to DB
+            await prisma.subscription.create({
+                data: {
+                    user_id: user.id,
+                    plan_id: data.subscription_plan,
+                    stripe_subscription_id: subscription.id,
+                    subscription_start_date: subscriptionStartDate,
+                    subscription_end_date: subscriptionEndDate,
+                    employee_limit: data.employee_limit ?? null,
+                    customer_id: customer.id,
+                    coupan_id: data.coupon ?? null,
+                    interval,
+                    plan_name: planName,
+                    stripe_status: true,
+                    invoice_id: invoice?.id ?? null,
+                    amount: planAmountInDollars,
+                    last_payment_attempted_date: lastPaymentAttemptedDate,
+                },
+            });
+
+            // Save payment method
+            await prisma.paymentMethod.create({
+                data: {
+                    user_id: user.id,
+                    stripe_payment_method_id: data.paymentMethod,
+                    card_brand: card?.card?.brand ?? null,
+                    last_4: card?.card?.last4 ?? null,
+                    exp_month: card?.card?.exp_month ?? null,
+                    exp_year: card?.card?.exp_year ?? null,
+                },
+            });
+
+            return NextResponse.json({
+                subscriptionId: subscription.id,
+                paymentStatus: paymentIntent?.status ?? 'unknown',
+            });
+        }
+
+        // 5️. No credit card, just return user
+        return NextResponse.json({ message: 'Public User created successfully', user });
+    } catch (err: any) {
+        console.error(err);
+        return NextResponse.json({ message: err.message || 'Failed to create user' }, { status: 500 });
+    }
+}
+
+export async function PUT(req: NextRequest) {
+    try {
+        const body = await req.json();
+        const { action } = body;
+
+        let result;
+
+        switch (action) {
+            case "updateCompanyType": {
+                const { subdomain_id, companyTypeId } = body;
+                result = await prisma.subdomains.update({
+                    where: { id: Number(subdomain_id) },
+                    data: { company_type_id: Number(companyTypeId) },
+                });
+                break;
+            }
+
+            // case "updatePoUser": {
+            //     const { userId, poUserId } = body;
+            //     result = await prisma.users.update({
+            //         where: { id: Number(userId) },
+            //         data: { owner_id: Number(poUserId) },
+            //     });
+            //     break;
+            // }
+
+            case "updateEmployeeLimit": {
+                const { userId, employeeLimit } = body;
+                // Update subscription
+                await prisma.subscription.updateMany({
+                    where: { user_id: Number(userId) },
+                    data: { employee_limit: String(employeeLimit) },
+                });
+                break;
+            }
+
+            case "updateHoursDaySetting": {
+                const { subdomain_id, hoursPerDay, weekStartDay } = body;
+                result = await prisma.subdomains.update({
+                    where: { id: Number(subdomain_id) },
+                    data: {
+                        regular_hours: Number(hoursPerDay),
+                        week_start_day: weekStartDay,
+                    },
+                });
+                break;
+            }
+
+            case "updateUserBan": {
+                const { userId } = body;
+                result = await prisma.users.update({
+                    where: { id: Number(userId) },
+                    data: {
+                        status: "ban",
+                    },
+                });
+                break;
+            }
+
+            case "updateUserUnban": {
+                const { userId } = body;
+                result = await prisma.users.update({
+                    where: { id: Number(userId) },
+                    data: {
+                        status: "active",
+                    },
+                });
+                break;
+            }
+
+            // Subscribe: PO user + SO users
+            case "subscribeUser": {
+                const { userId } = body;
+
+                // Update PO user
+                await prisma.users.update({
+                    where: { id: Number(userId) },
+                    data: { status: "active" },
+                });
+
+                // Update SO users linked to this PO user
+                await prisma.users.updateMany({
+                    where: { owner_id: Number(userId) },
+                    data: { status: "active" },
+                });
+                break;
+            }
+
+            // Unsubscribe: PO user + SO users
+            case "unsubscribeUser": {
+                const { userId } = body;
+
+                // Update PO user
+                await prisma.users.update({
+                    where: { id: Number(userId) },
+                    data: { status: "ban" },
+                });
+
+                // Update SO users linked to this PO user
+                await prisma.users.updateMany({
+                    where: { owner_id: Number(userId) },
+                    data: { status: "ban" },
+                });
+                break;
+            }
+
+            default:
+                return NextResponse.json(
+                    { success: false, error: "Invalid action" },
+                    { status: 400 }
+                );
+        }
+
+        return NextResponse.json({ success: true, data: result });
+    } catch (err: any) {
+        console.error("Update failed:", err);
+        return NextResponse.json(
+            { success: false, error: err.message },
+            { status: 500 }
+        );
+    }
+}
+
+// src/app/api/admin/publicUsers/route.ts
+export async function DELETE(req: Request) {
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get('id');
+
+    if (!id) {
+        return NextResponse.json({ success: false, error: 'Missing id' }, { status: 400 });
+    }
+
+    const userId = parseInt(id);
+    const updatedUser = await prisma.users.update({
+        where: { id: userId },
+        data: { deleted_at: new Date() },
+    });
+
+    return NextResponse.json({ success: true, user: updatedUser });
 }

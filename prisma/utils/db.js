@@ -7,7 +7,7 @@ dotenv.config();
 const prisma = new PrismaClient();
 
 async function createConnections() {
-    // 🔗 External DB connection
+    // External DB connection
     const externalDb = await mysql.createConnection({
         host: process.env.EXTERNAL_DB_HOST,
         user: process.env.EXTERNAL_DB_USER,
@@ -15,7 +15,7 @@ async function createConnections() {
         database: process.env.EXTERNAL_DB_NAME,
     });
 
-    // 🔗 Local DB connection derived from DATABASE_URL
+    // Local DB connection derived from DATABASE_URL
     const url = new URL(process.env.DATABASE_URL);
     const localDb = await mysql.createConnection({
         host: url.hostname,

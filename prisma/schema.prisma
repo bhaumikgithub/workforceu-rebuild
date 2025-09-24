@@ -78,8 +78,10 @@ model users {
   updated_at DateTime  @updatedAt
   deleted_at DateTime?
 
-  subscriptions  Subscription[]
-  paymentMethods PaymentMethod[]
+  subscriptions    Subscription[]
+  paymentMethods   PaymentMethod[]
+  userPermissions  user_permissions[] @relation("UserPermissionUser")
+  ownerPermissions user_permissions[] @relation("UserPermissionOwner")
 
   @@index([subdomain_id])
   @@index([state_id])
@@ -216,12 +218,12 @@ model Subscription {
   subscription_end_date       DateTime?
   employee_limit              String?
   customer_id                 String?
-  coupan_id                   String?   
-  interval                    String?   
-  plan_name                   String?   
-  stripe_status               Boolean   
-  invoice_id                  String?   
-  amount                      Float?    
+  coupan_id                   String?
+  interval                    String?
+  plan_name                   String?
+  stripe_status               Boolean
+  invoice_id                  String?
+  amount                      Float?
   last_payment_attempted_date DateTime?
   created_at                  DateTime  @default(now())
   updated_at                  DateTime  @updatedAt
@@ -262,6 +264,93 @@ model City {
   @@map("cities")
 }
 
+model permission_profiles {
+  id           Int       @id @default(autoincrement())
+  owner_id     Int
+  profile_name String
+  created_by   Int
+  created_at   DateTime  @default(now())
+  updated_at   DateTime? @updatedAt
+  deleted_at   DateTime?
+
+  profilePermissions profile_permissions[] // <-- back-relation
+
+  @@map("permission_profiles")
+}
+
+model permission_types {
+  id          Int       @id @default(autoincrement())
+  name        String
+  parent_id   Int?
+  output_name String
+  opt_add     Boolean   @default(false)
+  opt_edit    Boolean   @default(false)
+  opt_view    Boolean   @default(false)
+  opt_remove  Boolean   @default(false)
+  created_at  DateTime  @default(now())
+  updated_at  DateTime? @updatedAt
+  deleted_at  DateTime?
+
+  parent   permission_types?  @relation("ParentChild", fields: [parent_id], references: [id])
+  children permission_types[] @relation("ParentChild")
+
+  profilePermissions profile_permissions[] // <-- back-relation
+  permissions        permissions[] // <-- back-relation
+  userPermissions    user_permissions[] // <-- back-relation
+
+  @@map("permission_types")
+}
+
+model profile_permissions {
+  id                 Int       @id @default(autoincrement())
+  profile_id         Int
+  permission_type_id Int
+  is_add             Boolean   @default(false)
+  is_edit            Boolean   @default(false)
+  is_view            Boolean   @default(false)
+  is_remove          Boolean   @default(false)
+  created_at         DateTime  @default(now())
+  updated_at         DateTime? @updatedAt
+  deleted_at         DateTime?
+
+  profile    permission_profiles @relation(fields: [profile_id], references: [id])
+  permission permission_types    @relation(fields: [permission_type_id], references: [id])
+
+  @@map("profile_permissions")
+}
+
+model permissions {
+  id                 Int     @id @default(autoincrement())
+  user_id            Int 
+  owner_id           Int
+  permission_type_id Int
+  value              Boolean
+
+  permission permission_types @relation(fields: [permission_type_id], references: [id])
+
+  @@map("permissions")
+}
+
+model user_permissions {
+  id                 Int     @id @default(autoincrement())
+  user_id            Int
+  owner_id           Int?
+  permission_type_id Int
+  is_add             Boolean @default(false)
+  is_edit            Boolean @default(false)
+  is_view            Boolean @default(false)
+  is_remove          Boolean @default(false)
+
+  // Relations
+  user  users? @relation("UserPermissionUser", fields: [user_id], references: [id])
+  owner users? @relation("UserPermissionOwner", fields: [owner_id], references: [id])
+
+  permission permission_types? @relation(fields: [permission_type_id], references: [id])
+
+  @@unique([user_id, permission_type_id])
+  @@index([owner_id])
+  @@map("user_permissions")
+}
 
 // ---------------- ENUMS ----------------
 enum Gender {

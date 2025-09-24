@@ -146,9 +146,9 @@ export async function GET(req: NextRequest) {
     let orderBy: Prisma.usersOrderByWithRelationInput;
 
     if (sortableFields.includes(sortField as keyof Prisma.usersOrderByWithRelationInput)) {
-        orderBy = { [sortField]: sortOrder as Prisma.SortOrder };
+        orderBy = { [sortField]: sortOrder as Prisma.usersOrderByWithRelationInput };
     } else {
-        orderBy = { first_name: 'asc' }; // 👈 fallback to first_name asc
+        orderBy = { first_name: 'asc' }; // fallback to first_name asc
     }
 
     // Build filter
@@ -260,6 +260,39 @@ export async function POST(req: Request) {
             },
         });
 
+        // 3.1 Assign default permissions for PO user
+        const defaultPermissions = [
+            60, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 25, 24, 27, 28, 29, 30, 31, 32, 33,
+            34, 35, 36, 37, 61, 38, 39, 40, 41, 26, 59, 43, 44, 42, 47, 46, 48, 49, 50, 45,
+            52, 53, 54, 51, 55, 56, 57, 58, 59, 61, 62, 63, 64, 65, 66,
+        ];
+
+        // 3.2 Get all permission_type IDs that actually exist in DB
+        const existingPermissionTypes = await prisma.permission_types.findMany({
+            where: { id: { in: defaultPermissions } },
+            select: { id: true },
+        });
+        const existingIds = existingPermissionTypes.map(p => p.id);
+
+        //3.3 Calculate missing IDs
+        const missingIds = defaultPermissions.filter(id => !existingIds.includes(id));
+
+        console.log("Missing permission_type_ids:", missingIds);
+
+        // 3) Insert only existing IDs
+        if (existingIds.length > 0) {
+            await prisma.user_permissions.createMany({
+                data: existingIds.map(permissionId => ({
+                    user_id: user.id,
+                    owner_id: user.id,
+                    permission_type_id: permissionId,
+                    is_add: true,
+                    is_edit: true,
+                    is_view: true,
+                    is_remove: true,
+                })),
+            });
+        }
         // 4️. Handle Stripe subscription
         if (data.payment_type === 'CC') {
             if (!data.paymentMethod) {

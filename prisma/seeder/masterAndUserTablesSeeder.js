@@ -1,4 +1,4 @@
-import { createConnections, prisma } from "./utils/db.js";
+import { createConnections, prisma } from "../utils/db.js";
 
 export async function main() {
     const { externalDb, localDb } = await createConnections();
